@@ -1,0 +1,262 @@
+"""
+Ingestion pipeline — orchestrates parsing → AI normalization → DB persistence → embedding.
+Each step is isolated; failures are caught and logged without crashing the whole job.
+"""
+import logging
+from datetime import datetime
+from pathlib import Path
+
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.core.database import SessionLocal
+from app.db.models import Document, IngestionJob, MediaAsset, Product, ProductImage
+from app.services.ai.embeddings.image_embedding import ImageEmbeddingService
+from app.services.ai.embeddings.text_embedding import TextEmbeddingService
+from app.services.ai.llm.product_analyzer import ProductAnalyzer
+from app.services.ingestion.image_extractor import (
+    get_image_metadata,
+    save_extracted_image,
+)
+from app.services.ingestion.pdf_parser import parse_pdf
+from app.services.ingestion.pptx_parser import parse_pptx
+from app.services.ingestion.xlsx_parser import parse_xlsx
+
+logger = logging.getLogger(__name__)
+
+_analyzer = ProductAnalyzer()
+_text_embed = TextEmbeddingService()
+_image_embed = ImageEmbeddingService()
+
+
+def _update_job(job_id: str, db: Session, stage: str, status: str, progress: int = 0, error: str | None = None):
+    job = db.query(IngestionJob).filter_by(id=job_id).first()
+    if job:
+        job.stage = stage
+        job.status = status
+        job.progress = progress
+        if error:
+            job.error_message = error
+        if status == "running" and not job.started_at:
+            job.started_at = datetime.utcnow()
+        if status in ("done", "error"):
+            job.completed_at = datetime.utcnow()
+        db.commit()
+
+
+def run_pipeline(document_id: str, file_path: str, job_id: str):
+    """
+    Full ingestion pipeline for a single document.
+    Runs synchronously — called from a background thread.
+    """
+    db = SessionLocal()
+    try:
+        doc = db.query(Document).filter_by(id=document_id).first()
+        if not doc:
+            logger.error("Document %s not found", document_id)
+            return
+
+        doc.status = "processing"
+        db.commit()
+
+        # ------------------------------------------------------------------ #
+        # STAGE 1: Parse the file
+        # ------------------------------------------------------------------ #
+        _update_job(job_id, db, stage="parse", status="running", progress=10)
+        logger.info("Parsing %s (%s)", doc.filename, doc.file_type)
+
+        raw_text = ""
+        all_tables: list[list[dict]] = []
+        all_image_paths: list[str] = []
+
+        pics_base = settings.PICS_DIR
+
+        if doc.file_type == "pdf":
+            result = parse_pdf(file_path, document_id, pics_base)
+            raw_text = result.full_text
+            all_tables = result.all_tables
+            all_image_paths = result.all_image_paths
+
+        elif doc.file_type == "pptx":
+            result = parse_pptx(file_path, document_id, pics_base)
+            raw_text = result.full_text
+            all_tables = result.all_tables
+            all_image_paths = result.all_image_paths
+
+        elif doc.file_type == "xlsx":
+            result = parse_xlsx(file_path, document_id, pics_base)
+            all_tables = [result.all_rows]
+            all_image_paths = result.all_image_paths
+            raw_text = _rows_to_text(result.all_rows)
+
+        elif doc.file_type == "image":
+            # Direct image upload — save to pics and skip text parsing
+            with open(file_path, "rb") as f:
+                image_bytes = f.read()
+            saved = save_extracted_image(
+                image_bytes=image_bytes,
+                ext=Path(file_path).suffix.lstrip("."),
+                document_id=document_id,
+                source_ref="direct_upload",
+                pics_base_dir=pics_base,
+            )
+            if saved:
+                all_image_paths = [saved]
+
+        _update_job(job_id, db, stage="parse", status="running", progress=30)
+
+        # ------------------------------------------------------------------ #
+        # STAGE 2: Save media assets
+        # ------------------------------------------------------------------ #
+        saved_assets: list[MediaAsset] = []
+        for img_path in all_image_paths:
+            meta = get_image_metadata(img_path)
+            if not meta.get("sha256"):
+                continue
+            existing_asset = db.query(MediaAsset).filter_by(sha256=meta["sha256"]).first()
+            if existing_asset:
+                saved_assets.append(existing_asset)
+                continue
+            asset = MediaAsset(
+                document_id=document_id,
+                source_type=doc.file_type,
+                source_ref=Path(img_path).stem,
+                local_path=img_path,
+                filename=Path(img_path).name,
+                sha256=meta.get("sha256"),
+                phash=meta.get("phash"),
+                width=meta.get("width"),
+                height=meta.get("height"),
+                mime_type=meta.get("mime_type"),
+            )
+            db.add(asset)
+            saved_assets.append(asset)
+        db.commit()
+
+        _update_job(job_id, db, stage="normalize", status="running", progress=50)
+
+        # ------------------------------------------------------------------ #
+        # STAGE 3: AI product extraction
+        # ------------------------------------------------------------------ #
+        products_data: list[dict] = []
+
+        if raw_text.strip():
+            try:
+                products_data = _analyzer.extract_from_text(
+                    text=raw_text,
+                    tables=all_tables,
+                    supplier_name=doc.supplier_name or "",
+                )
+            except Exception as e:
+                logger.warning("Text product extraction failed: %s", e)
+
+        if doc.file_type == "image" and all_image_paths:
+            try:
+                image_products = _analyzer.extract_from_image(all_image_paths[0])
+                products_data.extend(image_products)
+            except Exception as e:
+                logger.warning("Image product extraction failed: %s", e)
+
+        # ------------------------------------------------------------------ #
+        # STAGE 4: Persist products
+        # ------------------------------------------------------------------ #
+        _update_job(job_id, db, stage="persist", status="running", progress=70)
+        created_products: list[Product] = []
+
+        for pdata in products_data:
+            # Avoid duplicates by supplier SKU
+            if pdata.get("supplier_sku") and doc.supplier_name:
+                exists = db.query(Product).filter_by(
+                    supplier_name=doc.supplier_name,
+                    supplier_sku=pdata["supplier_sku"],
+                ).first()
+                if exists:
+                    created_products.append(exists)
+                    continue
+
+            p = Product(
+                document_id=document_id,
+                title=pdata.get("title"),
+                category=pdata.get("category"),
+                material=pdata.get("material"),
+                style=pdata.get("style"),
+                color=pdata.get("color"),
+                width_mm=_to_float(pdata.get("width_mm")),
+                depth_mm=_to_float(pdata.get("depth_mm")),
+                height_mm=_to_float(pdata.get("height_mm")),
+                price=_to_float(pdata.get("price")),
+                currency=pdata.get("currency", "USD"),
+                supplier_name=doc.supplier_name or pdata.get("supplier_name"),
+                supplier_sku=pdata.get("supplier_sku"),
+                description=pdata.get("description"),
+                raw_attributes=pdata.get("raw_attributes", {}),
+                source_confidence=pdata.get("confidence", 1.0),
+            )
+            db.add(p)
+            db.flush()
+
+            # Link first available image as hero
+            if saved_assets:
+                pi = ProductImage(product_id=p.id, media_asset_id=saved_assets[0].id, role="hero", rank=0)
+                db.add(pi)
+
+            created_products.append(p)
+
+        db.commit()
+
+        # ------------------------------------------------------------------ #
+        # STAGE 5: Generate and store embeddings
+        # ------------------------------------------------------------------ #
+        _update_job(job_id, db, stage="embed", status="running", progress=85)
+
+        for p in created_products:
+            try:
+                text_for_embed = " ".join(filter(None, [p.title, p.category, p.material, p.style, p.description]))
+                if text_for_embed.strip():
+                    _text_embed.upsert(entity_id=p.id, text=text_for_embed)
+            except Exception as e:
+                logger.warning("Text embedding failed for product %s: %s", p.id, e)
+
+        for asset in saved_assets:
+            try:
+                _image_embed.upsert(asset_id=asset.id, image_path=asset.local_path)
+            except Exception as e:
+                logger.warning("Image embedding failed for asset %s: %s", asset.id, e)
+
+        # ------------------------------------------------------------------ #
+        # DONE
+        # ------------------------------------------------------------------ #
+        doc.status = "done"
+        doc.processed_at = datetime.utcnow()
+        db.commit()
+        _update_job(job_id, db, stage="done", status="done", progress=100)
+        logger.info("Pipeline complete for document %s — %d products", document_id, len(created_products))
+
+    except Exception as e:
+        logger.exception("Pipeline failed for document %s: %s", document_id, e)
+        try:
+            doc = db.query(Document).filter_by(id=document_id).first()
+            if doc:
+                doc.status = "error"
+                doc.error_message = str(e)
+                db.commit()
+            _update_job(job_id, db, stage="error", status="error", error=str(e))
+        except Exception:
+            pass
+    finally:
+        db.close()
+
+
+def _rows_to_text(rows: list[dict]) -> str:
+    """Convert flat row dicts to readable text for LLM extraction."""
+    parts = []
+    for row in rows:
+        parts.append(" | ".join(f"{k}: {v}" for k, v in row.items() if v))
+    return "\n".join(parts)
+
+
+def _to_float(value) -> float | None:
+    try:
+        return float(value) if value not in (None, "", "null") else None
+    except (TypeError, ValueError):
+        return None

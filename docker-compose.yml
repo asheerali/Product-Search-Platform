@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./pics:/app/pics
+      - ./backend/product_search.db:/app/product_search.db
+      - ./backend/chroma_db:/app/chroma_db
+    env_file:
+      - .env
+    environment:
+      - PICS_DIR=/app/pics
+      - DATABASE_URL=sqlite:////app/product_search.db
+      - CHROMA_DB_PATH=/app/chroma_db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      - backend

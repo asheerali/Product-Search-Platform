@@ -1,0 +1,2 @@
+# This folder stores all product images extracted from ingested documents.
+# Structure: pics/{document_id}/{sha256_prefix}.{ext}

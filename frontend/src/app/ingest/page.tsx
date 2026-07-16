@@ -1,0 +1,200 @@
+"use client";
+import type { IngestResult } from "@/lib/api";
+import { ingestFiles, ingestFolder } from "@/lib/api";
+import clsx from "clsx";
+import { AlertCircle, CheckCircle, Folder, Loader2, Upload, XCircle } from "lucide-react";
+import { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import toast from "react-hot-toast";
+
+type Mode = "file" | "folder";
+
+export default function IngestPage() {
+  const [mode, setMode] = useState<Mode>("file");
+  const [folderPath, setFolderPath] = useState("");
+  const [supplierName, setSupplierName] = useState("");
+  const [recursive, setRecursive] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<IngestResult | null>(null);
+  const [folderResult, setFolderResult] = useState<Record<string, unknown> | null>(null);
+
+  const onDrop = useCallback(
+    async (accepted: File[]) => {
+      if (!accepted.length) return;
+      setLoading(true);
+      setResult(null);
+      try {
+        const res = await ingestFiles(accepted, supplierName || undefined);
+        setResult(res);
+        const queued = res.results.filter((r) => r.status === "queued").length;
+        const skipped = res.results.filter((r) => r.status === "skipped").length;
+        toast.success(`Queued ${queued} file(s). ${skipped} skipped.`);
+      } catch (e: unknown) {
+        toast.error(String(e));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [supplierName]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "image/*": [".jpg", ".jpeg", ".png", ".webp"],
+    },
+    multiple: true,
+  });
+
+  const handleFolderIngest = async () => {
+    if (!folderPath.trim()) return toast.error("Please enter a folder path.");
+    setLoading(true);
+    setFolderResult(null);
+    try {
+      const res = await ingestFolder(folderPath.trim(), supplierName || undefined, recursive) as Record<string, unknown>;
+      setFolderResult(res);
+      const submitted = (res as Record<string, unknown>).submitted as number ?? 0;
+      toast.success(`Submitted ${submitted} file(s) for ingestion.`);
+    } catch (e: unknown) {
+      toast.error(String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">Ingest Files</h1>
+      <p className="text-slate-500 text-sm mb-6">
+        Upload catalog files or point to a folder path. Duplicate files (by hash) are automatically skipped.
+      </p>
+
+      {/* Supplier name */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-4">
+        <label className="block text-sm font-medium text-slate-700 mb-1">Supplier Name (optional)</label>
+        <input
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+          placeholder="e.g. U2 Living, Comfortlands…"
+          value={supplierName}
+          onChange={(e) => setSupplierName(e.target.value)}
+        />
+      </div>
+
+      {/* Mode tabs */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setMode("file")}
+          className={clsx(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+            mode === "file" ? "bg-sky-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+          )}
+        >
+          <Upload size={16} /> Upload Files
+        </button>
+        <button
+          onClick={() => setMode("folder")}
+          className={clsx(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+            mode === "folder" ? "bg-sky-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+          )}
+        >
+          <Folder size={16} /> Folder Path
+        </button>
+      </div>
+
+      {/* File drop zone */}
+      {mode === "file" && (
+        <div
+          {...getRootProps()}
+          className={clsx(
+            "bg-white border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors",
+            isDragActive ? "border-sky-400 bg-sky-50" : "border-slate-200 hover:border-sky-300"
+          )}
+        >
+          <input {...getInputProps()} />
+          <Upload className="mx-auto text-slate-400 mb-3" size={36} />
+          <p className="text-slate-600 font-medium">
+            {isDragActive ? "Drop files here…" : "Drag & drop files here, or click to select"}
+          </p>
+          <p className="text-slate-400 text-sm mt-1">PDF, PPTX, XLSX, JPG, PNG supported</p>
+          {loading && <Loader2 className="animate-spin mx-auto mt-4 text-sky-500" size={24} />}
+        </div>
+      )}
+
+      {/* Folder path input */}
+      {mode === "folder" && (
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Folder Path</label>
+            <input
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-400"
+              placeholder="C:\Users\...\files  or  /home/user/catalogs"
+              value={folderPath}
+              onChange={(e) => setFolderPath(e.target.value)}
+            />
+            <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
+              <AlertCircle size={12} /> Must be accessible from the backend server.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={recursive}
+              onChange={(e) => setRecursive(e.target.checked)}
+              className="rounded"
+            />
+            Include sub-folders (recursive)
+          </label>
+          <button
+            onClick={handleFolderIngest}
+            disabled={loading}
+            className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Folder size={16} />}
+            Start Ingestion
+          </button>
+        </div>
+      )}
+
+      {/* Results */}
+      {result && (
+        <div className="mt-5 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-700 mb-3">Results — {result.submitted} file(s)</h2>
+          <ul className="space-y-2">
+            {result.results.map((r, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                {r.status === "queued" ? (
+                  <CheckCircle size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+                ) : (
+                  <XCircle size={16} className="text-slate-400 mt-0.5 shrink-0" />
+                )}
+                <div>
+                  <span className="font-medium text-slate-700">{r.filename}</span>
+                  <span className={clsx("ml-2 text-xs", r.status === "queued" ? "text-emerald-600" : "text-slate-400")}>
+                    {r.status}
+                    {r.reason ? ` (${r.reason})` : ""}
+                  </span>
+                  {r.job_id && (
+                    <span className="ml-2 text-xs text-slate-400 font-mono">job: {r.job_id.slice(0, 8)}</span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {folderResult && (
+        <div className="mt-5 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-700 mb-2">Folder Scan Result</h2>
+          <pre className="text-xs text-slate-600 overflow-auto bg-slate-50 rounded p-3">
+            {JSON.stringify(folderResult, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}

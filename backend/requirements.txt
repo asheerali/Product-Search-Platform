@@ -1,0 +1,30 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+sqlalchemy==2.0.36
+python-multipart==0.0.12
+aiofiles==24.1.0
+pydantic-settings==2.6.1
+pydantic==2.10.1
+python-dotenv==1.0.1
+httpx==0.28.0
+
+# File parsing
+pdfplumber==0.11.4
+pymupdf==1.24.14
+python-pptx==1.0.2
+openpyxl==3.1.5
+pandas==2.2.3
+pillow==11.0.0
+pytesseract==0.3.13
+
+# AI / Embeddings
+openai==1.57.0
+sentence-transformers==3.3.1
+numpy==1.26.4
+# Note: ChromaDB requires Microsoft C++ Build Tools on Windows.
+# We use a built-in SQLite+numpy vector store instead (see services/ai/embeddings/).
+# To upgrade to ChromaDB later: pip install chromadb
+
+# Utilities
+python-magic==0.4.27
+pathlib2==2.3.7
