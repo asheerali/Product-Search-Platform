@@ -1,6 +1,6 @@
 """
 Image matcher — finds products visually similar to a query image.
-Uses CLIP embeddings in ChromaDB, then resolves asset → product via SQL.
+Uses CLIP embeddings in pgvector, then resolves asset to product via SQL.
 """
 import logging
 

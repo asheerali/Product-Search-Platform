@@ -1,12 +1,12 @@
-"""
+﻿"""
 Text embedding service using sentence-transformers (all-MiniLM-L6-v2).
-Stores vectors in ChromaDB collection 'product_text'.
+Stores vectors in PostgreSQL using pgvector.
 Model is loaded lazily on first use.
 """
 import logging
 from functools import lru_cache
 
-from app.core.config import settings
+from app.services.ai.embeddings import vector_store as vs
 
 logger = logging.getLogger(__name__)
 COLLECTION_NAME = "product_text"
@@ -20,16 +20,6 @@ def _load_model():
     return SentenceTransformer(MODEL_NAME)
 
 
-@lru_cache(maxsize=1)
-def _get_collection():
-    import chromadb
-    client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
-    return client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
-    )
-
-
 class TextEmbeddingService:
     def embed(self, text: str) -> list[float]:
         model = _load_model()
@@ -37,31 +27,15 @@ class TextEmbeddingService:
         return vector.tolist()
 
     def upsert(self, entity_id: str, text: str):
-        """Generate embedding and store/update it in ChromaDB."""
+        """Generate embedding and store/update it in the vector store."""
         vector = self.embed(text)
-        col = _get_collection()
-        col.upsert(
-            ids=[entity_id],
-            embeddings=[vector],
-            documents=[text[:500]],  # store first 500 chars as metadata
-        )
+        vs.upsert(COLLECTION_NAME, entity_id, vector, metadata={"text": text[:200]})
 
     def query(self, text: str, n_results: int = 20) -> list[dict]:
-        """Return top-N similar product IDs with distance scores."""
+        """Return top-N similar product IDs with cosine similarity scores."""
         vector = self.embed(text)
-        col = _get_collection()
         try:
-            results = col.query(
-                query_embeddings=[vector],
-                n_results=min(n_results, col.count() or 1),
-                include=["distances", "documents"],
-            )
-            ids = results["ids"][0]
-            distances = results["distances"][0]
-            return [
-                {"entity_id": eid, "score": round(1 - dist, 4)}
-                for eid, dist in zip(ids, distances)
-            ]
+            return vs.query(COLLECTION_NAME, vector, n_results=n_results)
         except Exception as e:
             logger.error("Text query failed: %s", e)
             return []

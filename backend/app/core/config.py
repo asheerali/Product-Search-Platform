@@ -1,26 +1,41 @@
-import os
+﻿import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # ---- Grok / xAI ----
-    GROK_API: str
-    GROK_TEXT_MODEL: str = "grok-3-latest"
-    GROK_VISION_MODEL: str = "grok-2-vision-latest"
-    GROK_BASE_URL: str = "https://api.x.ai/v1"
+    # ---- LLM provider config (generic) ----
+    LLM_PROVIDER: str = "xai"  # xai | openai | anthropic
 
-    # ---- Database ----
-    DATABASE_URL: str = "sqlite:///./product_search.db"
+    # xAI
+    XAI_API_KEY: str | None = None
+    XAI_BASE_URL: str = "https://api.x.ai/v1"
+    XAI_TEXT_MODEL: str = "grok-3-latest"
+    XAI_VISION_MODEL: str = "grok-2-vision-latest"
 
-    # ---- Vector store ----
-    CHROMA_DB_PATH: str = "./chroma_db"
+    # OpenAI
+    OPENAI_API_KEY: str | None = None
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_TEXT_MODEL: str = "gpt-4o-mini"
+    OPENAI_VISION_MODEL: str = "gpt-4o-mini"
+
+    # Anthropic
+    ANTHROPIC_API_KEY: str | None = None
+    ANTHROPIC_TEXT_MODEL: str = "claude-3-5-sonnet-latest"
+    ANTHROPIC_VISION_MODEL: str = "claude-3-5-sonnet-latest"
+
+    # Legacy xAI alias keys for backward compatibility
+    GROK_API: str | None = None
+    GROK_BASE_URL: str | None = None
+    GROK_TEXT_MODEL: str | None = None
+    GROK_VISION_MODEL: str | None = None
+
+    # ---- Database (PostgreSQL + pgvector) ----
+    DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/product_search"
 
     # ---- File storage ----
-    # Absolute or relative path to the pics folder (extracted images land here)
     PICS_DIR: str = str(Path(__file__).resolve().parents[3] / "pics")
-    # Temp dir for uploaded files during processing
     UPLOAD_TEMP_DIR: str = "./tmp_uploads"
 
     # ---- CORS ----
@@ -33,7 +48,15 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Make sure key directories exist at import time
+# Backward compatibility for old .env keys
+if not settings.XAI_API_KEY and settings.GROK_API:
+    settings.XAI_API_KEY = settings.GROK_API
+if settings.GROK_BASE_URL:
+    settings.XAI_BASE_URL = settings.GROK_BASE_URL
+if settings.GROK_TEXT_MODEL:
+    settings.XAI_TEXT_MODEL = settings.GROK_TEXT_MODEL
+if settings.GROK_VISION_MODEL:
+    settings.XAI_VISION_MODEL = settings.GROK_VISION_MODEL
+
 Path(settings.PICS_DIR).mkdir(parents=True, exist_ok=True)
 Path(settings.UPLOAD_TEMP_DIR).mkdir(parents=True, exist_ok=True)
-Path(settings.CHROMA_DB_PATH).mkdir(parents=True, exist_ok=True)

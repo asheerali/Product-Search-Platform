@@ -46,7 +46,7 @@ export function Sidebar() {
         ))}
       </nav>
       <div className="px-5 py-4 border-t border-slate-700 text-slate-500 text-xs">
-        v1.0.0 · Powered by Grok
+        v1.0.0 · Provider-Agnostic AI
       </div>
     </aside>
   );

@@ -1,12 +1,12 @@
-"""
+﻿"""
 Image embedding service using CLIP (clip-ViT-B-32 via sentence-transformers).
-Stores vectors in ChromaDB collection 'product_images'.
+Stores vectors in PostgreSQL using pgvector.
 Model is loaded lazily on first use.
 """
 import logging
 from functools import lru_cache
 
-from app.core.config import settings
+from app.services.ai.embeddings import vector_store as vs
 
 logger = logging.getLogger(__name__)
 COLLECTION_NAME = "product_images"
@@ -18,16 +18,6 @@ def _load_clip():
     from sentence_transformers import SentenceTransformer
     logger.info("Loading CLIP image embedding model: %s", MODEL_NAME)
     return SentenceTransformer(MODEL_NAME)
-
-
-@lru_cache(maxsize=1)
-def _get_collection():
-    import chromadb
-    client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
-    return client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
-    )
 
 
 class ImageEmbeddingService:
@@ -44,38 +34,29 @@ class ImageEmbeddingService:
             return None
 
     def upsert(self, asset_id: str, image_path: str):
-        """Generate CLIP embedding and store/update in ChromaDB."""
+        """Generate CLIP embedding and store/update in the vector store."""
         vector = self.embed_path(image_path)
         if vector is None:
             return
-        col = _get_collection()
-        col.upsert(
-            ids=[asset_id],
-            embeddings=[vector],
-            metadatas=[{"path": image_path}],
-        )
+        vs.upsert(COLLECTION_NAME, asset_id, vector, metadata={"path": image_path})
 
     def query(self, image_path: str, n_results: int = 20) -> list[dict]:
         """Find visually similar images by CLIP cosine similarity."""
         vector = self.embed_path(image_path)
         if vector is None:
             return []
-        col = _get_collection()
         try:
-            count = col.count()
+            count = vs.count(COLLECTION_NAME)
             if count == 0:
                 return []
-            results = col.query(
-                query_embeddings=[vector],
-                n_results=min(n_results, count),
-                include=["distances", "metadatas"],
-            )
-            ids = results["ids"][0]
-            distances = results["distances"][0]
-            metadatas = results["metadatas"][0]
+            results = vs.query(COLLECTION_NAME, vector, n_results=min(n_results, count))
             return [
-                {"asset_id": aid, "score": round(1 - dist, 4), "path": meta.get("path", "")}
-                for aid, dist, meta in zip(ids, distances, metadatas)
+                {
+                    "asset_id": r["entity_id"],
+                    "score": r["score"],
+                    "path": r["metadata"].get("path", ""),
+                }
+                for r in results
             ]
         except Exception as e:
             logger.error("Image query failed: %s", e)

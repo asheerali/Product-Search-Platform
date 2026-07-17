@@ -1,6 +1,6 @@
 """
 Hybrid ranker — combines semantic text search with optional SQL filters.
-Uses text embeddings from ChromaDB, then hydrates results from PostgreSQL/SQLite.
+Uses text embeddings from pgvector, then hydrates results from PostgreSQL.
 """
 import logging
 from typing import Any

@@ -1,11 +1,11 @@
-"""
-Product analyzer — uses Grok to extract structured product data from
-raw text (from PDFs/PPTX/XLSX) and from product images.
+﻿"""
+Product analyzer - extracts structured product data from raw text
+(from PDFs/PPTX/XLSX) and from product images using the configured LLM provider.
 """
 import json
 import logging
 
-from app.services.ai.llm.grok_client import chat_completion, vision_completion
+from app.services.ai.llm.llm_client import chat_completion, vision_completion
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ For each product return a JSON object with these fields:
 - material (string): primary material(s)
 - style (string): design style (modern, traditional, Scandinavian, industrial, etc.)
 - color (string): primary color(s)
-- width_mm (number or null): width in mm — convert from cm (×10) or inches (×25.4) if needed
+- width_mm (number or null): width in mm - convert from cm (x10) or inches (x25.4) if needed
 - depth_mm (number or null): depth in mm
 - height_mm (number or null): height in mm
 - price (number or null): numeric price

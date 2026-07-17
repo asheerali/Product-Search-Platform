@@ -1,6 +1,17 @@
 version: "3.9"
 
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=product_search
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
   backend:
     build:
       context: ./backend
@@ -9,14 +20,14 @@ services:
       - "8000:8000"
     volumes:
       - ./pics:/app/pics
-      - ./backend/product_search.db:/app/product_search.db
-      - ./backend/chroma_db:/app/chroma_db
     env_file:
       - .env
     environment:
       - PICS_DIR=/app/pics
-      - DATABASE_URL=sqlite:////app/product_search.db
-      - CHROMA_DB_PATH=/app/chroma_db
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@db:5432/product_search
+      - LLM_PROVIDER=xai
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -28,3 +39,6 @@ services:
       - NEXT_PUBLIC_API_URL=http://backend:8000
     depends_on:
       - backend
+
+volumes:
+  pg_data:

@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -157,3 +158,21 @@ class ProductImage(Base):
 
     product = relationship("Product", back_populates="images")
     media_asset = relationship("MediaAsset", back_populates="product_images")
+
+
+# ---------------------------------------------------------------------------
+# Embeddings — stores semantic vectors in PostgreSQL (pgvector)
+# ---------------------------------------------------------------------------
+class Embedding(Base):
+    __tablename__ = "embeddings"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    entity_id = Column(String, nullable=False, index=True)
+    collection = Column(String, nullable=False, index=True)  # product_text | product_images
+    embedding = Column(Vector(), nullable=False)
+    metadata = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("entity_id", "collection", name="uq_embedding_entity_collection"),
+    )
