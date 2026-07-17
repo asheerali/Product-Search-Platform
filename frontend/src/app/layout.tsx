@@ -1,7 +1,7 @@
 import { Sidebar } from "@/components/Sidebar";
 import type { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
-import "./globals.css";
+import "../styles/globals.css";
 
 export const metadata: Metadata = {
   title: "Product Search Platform",

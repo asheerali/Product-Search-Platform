@@ -1,0 +1,144 @@
+PRODUCT SEARCH PLATFORM - SETUP & RUN GUIDE
+=============================================
+
+STACK
+-----
+- Backend:  FastAPI (Python) + PostgreSQL with pgvector extension
+- Frontend: Next.js (React) + Tailwind CSS
+- LLM:      xAI (Grok) by default, switchable to OpenAI or Anthropic
+
+CONFIG
+------
+API keys and config live in a single file at the project root: .env
+(This file is git-ignored, so it will never be committed.)
+
+Current .env contents (already set up for you):
+    LLM_PROVIDER=xai
+    XAI_API_KEY=<your key>
+    DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/product_search
+
+Note: the .env file MUST live at the project root (same folder as
+docker-compose.yml), not inside backend/. Both backend/app/core/config.py
+and docker-compose.yml read it from there.
+
+To switch LLM providers, edit LLM_PROVIDER to "openai" or "anthropic" and
+set OPENAI_API_KEY or ANTHROPIC_API_KEY accordingly (see config.py for all
+recognized keys).
+
+frontend/.env.local (already created) points the frontend at the local
+backend:
+    NEXT_PUBLIC_API_URL=http://localhost:8000
+
+
+CURRENT SETUP: DB IN DOCKER, BACKEND + FRONTEND LOCAL
+========================================================
+This is the recommended setup for active development (fast reloads, no
+image rebuilds needed).
+
+1) Start Postgres + pgvector in Docker (only the db service):
+    docker compose up -d db
+
+   Check it's running:
+    docker compose ps
+
+   Stop it:
+    docker compose stop db
+
+2) Backend (from project root, first terminal):
+    cd backend
+    python -m venv venv
+    venv\Scripts\Activate.ps1        (PowerShell)  or  venv\Scripts\activate.bat  (cmd)
+    pip install -r requirements.txt
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+   Reads config from the root .env automatically. Verify at:
+    http://localhost:8000/health   -> {"status":"ok",...}
+    http://localhost:8000/docs     -> Swagger UI
+
+3) Frontend (from project root, second terminal):
+    cd frontend
+    npm install
+    npm run dev
+
+   Runs at http://localhost:3000
+
+
+ALTERNATIVE: RUN EVERYTHING WITH DOCKER
+==========================================
+Requires Docker Desktop running. From the project root:
+
+    docker compose up --build
+
+Starts all 3 containers (db, backend on :8000, frontend on :3000).
+Stop with Ctrl+C then `docker compose down` (add -v to also wipe the DB
+volume).
+
+NOTE: the first build downloads PyTorch (CPU build, ~200MB) among other
+Python deps and can take several minutes depending on your connection.
+
+
+BUGS FOUND & FIXED DURING SETUP
+==================================
+These were pre-existing issues in the repo, not caused by normal use —
+fixed so the app actually runs:
+
+1. .env was at backend/.env with malformed content
+   ("GROK_API_KEY = XAI_API_KEY=xai-..." on one line), so the API key was
+   never actually loaded. Moved/rewritten as a proper root .env (see CONFIG
+   above) — this is the path both config.py and docker-compose.yml expect.
+
+2. backend/requirements.txt pulled sentence-transformers -> torch, and by
+   default pip resolves the GPU/CUDA build of torch from PyPI (~1.5GB of
+   CUDA libraries), which isn't needed since the app only runs embeddings
+   on CPU. This also caused Docker builds to time out on the huge download.
+   Fixed by pinning the CPU-only wheel:
+       --extra-index-url https://download.pytorch.org/whl/cpu
+       torch==2.6.0+cpu
+
+3. frontend/src/lib/api.ts (the API client used by every page) did not
+   exist at all, causing "Module not found: Can't resolve '@/lib/api'".
+   Created it with functions matching the backend's actual routes/schemas
+   (ingest, products, search, jobs).
+
+4. frontend/src/app/layout.tsx imported "./globals.css" but the file
+   actually lives at frontend/src/styles/globals.css. Fixed the import
+   path.
+
+5. backend/app/db/models.py — the Embedding model had a column named
+   `metadata`, which collides with SQLAlchemy's reserved Base.metadata
+   attribute and crashed the app on startup with:
+     "Attribute name 'metadata' is reserved when using the Declarative API"
+   Renamed the Python attribute to `meta_data` while keeping the actual
+   DB column name as "metadata" (via Column("metadata", JSON)), since
+   backend/app/services/ai/embeddings/vector_store.py references the
+   column by that name in raw SQL.
+
+All of the above have been verified working end-to-end: db up in Docker,
+backend boots and passes /health, frontend dashboard loads and successfully
+calls the backend API.
+
+
+TROUBLESHOOTING
+----------------
+- "relation does not exist" / DB errors on first run:
+    Tables are auto-created on backend startup (see app/main.py lifespan +
+    app/core/database.py create_all_tables()). Just make sure the db
+    container/service is up and reachable before the backend starts.
+
+- "API key missing for provider 'xai'":
+    Check that .env is at the PROJECT ROOT and contains XAI_API_KEY=...
+    with no extra text on the line.
+
+- "Module not found: Can't resolve '@/lib/api'" or similar frontend error
+  after pulling new changes:
+    Stop and restart `npm run dev` — Next.js sometimes needs a fresh
+    process to pick up new files, especially after .env.local changes.
+
+- Port already in use (5432 / 8000 / 3000):
+    Stop whatever else is using that port, or change the port mapping in
+    docker-compose.yml (left side of the "host:container" pair).
+
+- Ports/services in this project:
+    5432  Postgres (pgvector)
+    8000  FastAPI backend
+    3000  Next.js frontend

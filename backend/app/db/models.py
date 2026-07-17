@@ -170,7 +170,7 @@ class Embedding(Base):
     entity_id = Column(String, nullable=False, index=True)
     collection = Column(String, nullable=False, index=True)  # product_text | product_images
     embedding = Column(Vector(), nullable=False)
-    metadata = Column(JSON)
+    meta_data = Column("metadata", JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (
