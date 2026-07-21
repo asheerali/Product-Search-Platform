@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # ---- File storage ----
     PICS_DIR: str = str(Path(__file__).resolve().parents[3] / "pics")
     UPLOAD_TEMP_DIR: str = "./tmp_uploads"
+    # Stand-in for S3 in this demo: uploaded originals land here so every
+    # source file (PDF/PPTX/XLSX/image/email) lives in one consolidated place.
+    SHARED_STORAGE_DIR: str = str(Path(__file__).resolve().parents[3] / "shared")
 
     # ---- CORS ----
     FRONTEND_ORIGIN: str = "http://localhost:3000"
@@ -60,3 +63,4 @@ if settings.GROK_VISION_MODEL:
 
 Path(settings.PICS_DIR).mkdir(parents=True, exist_ok=True)
 Path(settings.UPLOAD_TEMP_DIR).mkdir(parents=True, exist_ok=True)
+Path(settings.SHARED_STORAGE_DIR).mkdir(parents=True, exist_ok=True)

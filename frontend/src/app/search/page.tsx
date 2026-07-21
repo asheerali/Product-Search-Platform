@@ -1,6 +1,8 @@
 "use client";
+import { useDemoMode } from "@/components/DemoModeProvider";
 import type { SearchResponse, SearchResultItem } from "@/lib/api";
-import { API_BASE, imageSearch, textSearch } from "@/lib/api";
+import { imageSearch, resolveImageUrl, textSearch } from "@/lib/api";
+import { DEMO_SEARCH_RESPONSE } from "@/lib/demoData";
 import clsx from "clsx";
 import { ImageIcon, Loader2, Search, X } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -10,6 +12,7 @@ import toast from "react-hot-toast";
 type SearchMode = "text" | "image";
 
 export default function SearchPage() {
+  const { isBackendUp } = useDemoMode();
   const [mode, setMode] = useState<SearchMode>("text");
   const [query, setQuery] = useState("");
   const [queryImage, setQueryImage] = useState<File | null>(null);
@@ -35,11 +38,16 @@ export default function SearchPage() {
     if (mode === "image" && !queryImage) return toast.error("Upload a product image.");
     setLoading(true);
     try {
-      const res =
-        mode === "text"
-          ? await textSearch(query)
-          : await imageSearch(queryImage!);
-      setResponse(res);
+      if (isBackendUp === false) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        setResponse({ ...DEMO_SEARCH_RESPONSE, query: mode === "text" ? query : `image:${queryImage?.name}` });
+      } else {
+        const res =
+          mode === "text"
+            ? await textSearch(query)
+            : await imageSearch(queryImage!);
+        setResponse(res);
+      }
     } catch (e: unknown) {
       toast.error(String(e));
     } finally {
@@ -155,7 +163,7 @@ export default function SearchPage() {
 }
 
 function ResultCard({ item }: { item: SearchResultItem }) {
-  const imgSrc = item.image_url ? `${API_BASE}${item.image_url}` : null;
+  const imgSrc = item.image_url ? resolveImageUrl(item.image_url) : null;
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex gap-4">
       <div className="w-20 h-20 bg-slate-100 rounded-lg shrink-0 overflow-hidden flex items-center justify-center">

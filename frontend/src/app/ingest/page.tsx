@@ -1,6 +1,8 @@
 "use client";
 import type { IngestResult } from "@/lib/api";
 import { ingestFiles, ingestFolder } from "@/lib/api";
+import { useDemoMode } from "@/components/DemoModeProvider";
+import { simulateDemoUpload } from "@/lib/demoUpload";
 import clsx from "clsx";
 import { AlertCircle, CheckCircle, Folder, Loader2, Upload, XCircle } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -10,6 +12,7 @@ import toast from "react-hot-toast";
 type Mode = "file" | "folder";
 
 export default function IngestPage() {
+  const { isBackendUp } = useDemoMode();
   const [mode, setMode] = useState<Mode>("file");
   const [folderPath, setFolderPath] = useState("");
   const [supplierName, setSupplierName] = useState("");
@@ -24,18 +27,24 @@ export default function IngestPage() {
       setLoading(true);
       setResult(null);
       try {
-        const res = await ingestFiles(accepted, supplierName || undefined);
-        setResult(res);
-        const queued = res.results.filter((r) => r.status === "queued").length;
-        const skipped = res.results.filter((r) => r.status === "skipped").length;
-        toast.success(`Queued ${queued} file(s). ${skipped} skipped.`);
+        if (isBackendUp === false) {
+          const res = await simulateDemoUpload(accepted);
+          setResult(res);
+          toast.success("Demo: simulated extraction complete.");
+        } else {
+          const res = await ingestFiles(accepted, supplierName || undefined);
+          setResult(res);
+          const queued = res.results.filter((r) => r.status === "queued").length;
+          const skipped = res.results.filter((r) => r.status === "skipped").length;
+          toast.success(`Queued ${queued} file(s). ${skipped} skipped.`);
+        }
       } catch (e: unknown) {
         toast.error(String(e));
       } finally {
         setLoading(false);
       }
     },
-    [supplierName]
+    [supplierName, isBackendUp]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

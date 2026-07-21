@@ -14,6 +14,7 @@ from app.db.models import Document, IngestionJob, MediaAsset, Product, ProductIm
 from app.services.ai.embeddings.image_embedding import ImageEmbeddingService
 from app.services.ai.embeddings.text_embedding import TextEmbeddingService
 from app.services.ai.llm.product_analyzer import ProductAnalyzer
+from app.services.ingestion.email_parser import parse_email
 from app.services.ingestion.image_extractor import (
     get_image_metadata,
     save_extracted_image,
@@ -39,9 +40,20 @@ def _update_job(job_id: str, db: Session, stage: str, status: str, progress: int
             job.error_message = error
         if status == "running" and not job.started_at:
             job.started_at = datetime.utcnow()
-        if status in ("done", "error"):
+        if status in ("done", "error", "cancelled"):
             job.completed_at = datetime.utcnow()
         db.commit()
+
+
+class PipelineCancelled(Exception):
+    """Raised internally when a user cancels an in-progress job."""
+
+
+def _raise_if_cancelled(job_id: str, db: Session):
+    db.expire_all()  # pick up the "cancelled" status committed by the cancel endpoint
+    job = db.query(IngestionJob).filter_by(id=job_id).first()
+    if job and job.status == "cancelled":
+        raise PipelineCancelled()
 
 
 def run_pipeline(document_id: str, file_path: str, job_id: str):
@@ -89,6 +101,12 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
             all_image_paths = result.all_image_paths
             raw_text = _rows_to_text(result.all_rows)
 
+        elif doc.file_type in ("eml", "msg"):
+            result = parse_email(file_path, document_id, pics_base)
+            raw_text = result.full_text
+            all_tables = result.all_tables
+            all_image_paths = result.all_image_paths
+
         elif doc.file_type == "image":
             # Direct image upload — save to pics and skip text parsing
             with open(file_path, "rb") as f:
@@ -104,6 +122,7 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
                 all_image_paths = [saved]
 
         _update_job(job_id, db, stage="parse", status="running", progress=30)
+        _raise_if_cancelled(job_id, db)
 
         # ------------------------------------------------------------------ #
         # STAGE 2: Save media assets
@@ -134,6 +153,7 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
         db.commit()
 
         _update_job(job_id, db, stage="normalize", status="running", progress=50)
+        _raise_if_cancelled(job_id, db)
 
         # ------------------------------------------------------------------ #
         # STAGE 3: AI product extraction
@@ -152,7 +172,9 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
 
         if doc.file_type == "image" and all_image_paths:
             try:
-                image_products = _analyzer.extract_from_image(all_image_paths[0])
+                image_products = _analyzer.extract_from_image(
+                    all_image_paths[0], supplier_name=doc.supplier_name or ""
+                )
                 products_data.extend(image_products)
             except Exception as e:
                 logger.warning("Image product extraction failed: %s", e)
@@ -161,6 +183,7 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
         # STAGE 4: Persist products
         # ------------------------------------------------------------------ #
         _update_job(job_id, db, stage="persist", status="running", progress=70)
+        _raise_if_cancelled(job_id, db)
         created_products: list[Product] = []
 
         for pdata in products_data:
@@ -208,6 +231,7 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
         # STAGE 5: Generate and store embeddings
         # ------------------------------------------------------------------ #
         _update_job(job_id, db, stage="embed", status="running", progress=85)
+        _raise_if_cancelled(job_id, db)
 
         for p in created_products:
             try:
@@ -232,6 +256,15 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
         _update_job(job_id, db, stage="done", status="done", progress=100)
         logger.info("Pipeline complete for document %s — %d products", document_id, len(created_products))
 
+    except PipelineCancelled:
+        logger.info("Pipeline cancelled for document %s", document_id)
+        try:
+            doc = db.query(Document).filter_by(id=document_id).first()
+            if doc:
+                doc.status = "cancelled"
+                db.commit()
+        except Exception:
+            pass
     except Exception as e:
         logger.exception("Pipeline failed for document %s: %s", document_id, e)
         try:

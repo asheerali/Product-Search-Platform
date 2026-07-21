@@ -1,26 +1,85 @@
 "use client";
+import { useDemoMode } from "@/components/DemoModeProvider";
 import type { Product, ProductListResponse } from "@/lib/api";
-import { API_BASE, getProducts } from "@/lib/api";
-import { ChevronLeft, ChevronRight, ImageIcon, Package } from "lucide-react";
-import { useEffect, useState } from "react";
+import { deleteProduct, deleteProductsBulk, getProducts, resolveImageUrl } from "@/lib/api";
+import { DEMO_PRODUCTS_RESPONSE } from "@/lib/demoData";
+import { ChevronLeft, ChevronRight, ImageIcon, Package, Trash2, X, ZoomIn } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 const CATEGORIES = ["", "sofa", "chair", "table", "bed", "wardrobe", "cabinet", "desk", "shelf", "lamp", "other"];
 
 export default function ProductsPage() {
+  const { isBackendUp } = useDemoMode();
   const [data, setData] = useState<ProductListResponse | null>(null);
   const [page, setPage] = useState(1);
+  const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [supplier, setSupplier] = useState("");
   const [loading, setLoading] = useState(true);
+  const [zoomProduct, setZoomProduct] = useState<Product | null>(null);
+
+  const refresh = useCallback(() => {
+    if (isBackendUp === null) return; // wait until we know
+
+    if (isBackendUp === false) {
+      setData(DEMO_PRODUCTS_RESPONSE);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    getProducts({
+      page,
+      limit: 20,
+      title: title || undefined,
+      category: category || undefined,
+      supplier_name: supplier || undefined,
+    })
+      .then(setData)
+      .catch(() => toast.error("Failed to load products. Is the backend running?"))
+      .finally(() => setLoading(false));
+  }, [page, title, category, supplier, isBackendUp]);
 
   useEffect(() => {
-    setLoading(true);
-    getProducts({ page, limit: 20, category: category || undefined, supplier_name: supplier || undefined })
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, [page, category, supplier]);
+    refresh();
+  }, [refresh]);
 
   const totalPages = data ? Math.ceil(data.total / 20) : 1;
+
+  const handleDelete = async (product: Product) => {
+    if (isBackendUp === false) return toast.error("Demo mode — delete is disabled.");
+    if (!confirm(`Delete "${product.title ?? "this product"}"?`)) return;
+    try {
+      await deleteProduct(product.id);
+      toast.success("Product deleted.");
+      refresh();
+    } catch (e: unknown) {
+      toast.error(String(e));
+    }
+  };
+
+  const handleDeleteFiltered = async () => {
+    if (isBackendUp === false) return toast.error("Demo mode — delete is disabled.");
+    if (!title && !category && !supplier) {
+      toast.error("Set a name, category, or supplier filter first.");
+      return;
+    }
+    if (!confirm(`Delete all ${data?.total ?? 0} product(s) matching the current filters? This cannot be undone.`)) return;
+    try {
+      const res = await deleteProductsBulk({
+        title: title || undefined,
+        category: category || undefined,
+        supplier_name: supplier || undefined,
+      });
+      toast.success(`Deleted ${res.deleted_count} product(s).`);
+      setPage(1);
+      refresh();
+    } catch (e: unknown) {
+      toast.error(String(e));
+    }
+  };
 
   return (
     <div>
@@ -28,7 +87,13 @@ export default function ProductsPage() {
       <p className="text-slate-500 text-sm mb-6">Browse all extracted and normalized product records.</p>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap gap-3 mb-6 items-center">
+        <input
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 w-48"
+          placeholder="Search by name…"
+          value={title}
+          onChange={(e) => { setTitle(e.target.value); setPage(1); }}
+        />
         <select
           className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
           value={category}
@@ -44,6 +109,14 @@ export default function ProductsPage() {
           value={supplier}
           onChange={(e) => { setSupplier(e.target.value); setPage(1); }}
         />
+        {(title || category || supplier) && (
+          <button
+            onClick={handleDeleteFiltered}
+            className="flex items-center gap-2 text-sm text-red-600 border border-red-200 rounded-lg px-3 py-2 hover:bg-red-50"
+          >
+            <Trash2 size={14} /> Delete all matching
+          </button>
+        )}
         {data && (
           <span className="ml-auto text-sm text-slate-500 self-center">
             {data.total} product(s)
@@ -60,7 +133,9 @@ export default function ProductsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {data?.items.map((p) => <ProductCard key={p.id} product={p} />)}
+          {data?.items.map((p) => (
+            <ProductCard key={p.id} product={p} onDelete={handleDelete} onZoom={setZoomProduct} />
+          ))}
           {data?.items.length === 0 && (
             <div className="col-span-4 py-20 text-center text-slate-400">
               <Package size={40} className="mx-auto mb-3 opacity-30" />
@@ -90,23 +165,50 @@ export default function ProductsPage() {
           </button>
         </div>
       )}
+
+      {zoomProduct && <ImageLightbox product={zoomProduct} onClose={() => setZoomProduct(null)} />}
     </div>
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
-  const imgSrc = product.image_urls[0] ? `${API_BASE}${product.image_urls[0]}` : null;
+function ProductCard({
+  product,
+  onDelete,
+  onZoom,
+}: {
+  product: Product;
+  onDelete: (product: Product) => void;
+  onZoom: (product: Product) => void;
+}) {
+  const imgSrc = product.image_urls[0] ? resolveImageUrl(product.image_urls[0]) : null;
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-      <div className="h-40 bg-slate-100 flex items-center justify-center overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group relative">
+      <button
+        onClick={() => onDelete(product)}
+        title="Delete product"
+        className="absolute top-2 right-2 z-10 bg-white/90 rounded-lg p-1.5 text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+      >
+        <Trash2 size={14} />
+      </button>
+      <div
+        onClick={() => imgSrc && onZoom(product)}
+        className={`h-40 bg-slate-100 flex items-center justify-center overflow-hidden relative ${imgSrc ? "cursor-zoom-in" : ""}`}
+      >
         {imgSrc ? (
-          <img src={imgSrc} alt={product.title ?? ""} className="w-full h-full object-cover" />
+          <>
+            <img src={imgSrc} alt={product.title ?? ""} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <ZoomIn className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
+            </div>
+          </>
         ) : (
           <ImageIcon className="text-slate-300" size={36} />
         )}
       </div>
       <div className="p-3">
-        <h3 className="font-medium text-slate-800 text-sm truncate">{product.title ?? "Untitled"}</h3>
+        <Link href={`/products/${product.id}`} className="font-medium text-slate-800 text-sm truncate hover:text-sky-600 hover:underline block">
+          {product.title ?? "Untitled"}
+        </Link>
         {product.category && (
           <span className="inline-block bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded mt-1">
             {product.category}
@@ -123,6 +225,52 @@ function ProductCard({ product }: { product: Product }) {
         {product.material && (
           <p className="text-xs text-slate-400 mt-1 truncate">Material: {product.material}</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ImageLightbox({ product, onClose }: { product: Product; onClose: () => void }) {
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  const imgSrc = product.image_urls[0] ? resolveImageUrl(product.image_urls[0]) : null;
+  if (!imgSrc) return null;
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6"
+    >
+      <button
+        onClick={onClose}
+        title="Close (Esc)"
+        className="absolute top-5 right-5 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+      >
+        <X size={22} />
+      </button>
+      <div onClick={(e) => e.stopPropagation()} className="max-w-4xl w-full flex flex-col items-center">
+        <img
+          src={imgSrc}
+          alt={product.title ?? ""}
+          className="max-h-[80vh] max-w-full object-contain rounded-lg shadow-2xl"
+        />
+        <div className="mt-4 text-center text-white">
+          <h3 className="font-semibold text-lg">{product.title ?? "Untitled"}</h3>
+          <p className="text-white/70 text-sm mt-1">
+            {[product.category, product.material, product.color].filter(Boolean).join(" · ")}
+          </p>
+          {product.price != null && (
+            <p className="text-sky-300 font-semibold mt-1">
+              {product.currency} {product.price.toLocaleString()}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import os
 import shutil
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -9,19 +11,22 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import http_bad_request
-from app.db.models import Document, IngestionJob, ProcessedFile
+from app.db.models import Document, IngestionJob, MediaAsset, ProcessedFile, Product, ProductImage
 from app.schemas.document import (
     DocumentOut,
     FolderIngestRequest,
     IngestionJobOut,
     ProcessedFileOut,
 )
+from app.services.ai.embeddings import vector_store
 from app.services.ingestion.deduplication import compute_file_hash
 from app.workers.ingestion_worker import enqueue_document
 
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 
-ALLOWED_EXTENSIONS = {".pdf", ".pptx", ".xlsx", ".xls", ".jpg", ".jpeg", ".png", ".webp"}
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".pptx", ".xlsx", ".xls", ".jpg", ".jpeg", ".png", ".webp", ".eml", ".msg",
+}
 
 
 def _get_file_type(filename: str) -> str:
@@ -35,6 +40,8 @@ def _get_file_type(filename: str) -> str:
         ".jpeg": "image",
         ".png": "image",
         ".webp": "image",
+        ".eml": "eml",
+        ".msg": "msg",
     }
     return mapping.get(ext, "unknown")
 
@@ -109,7 +116,9 @@ async def ingest_file(
 ):
     """Accept file uploads and queue them for ingestion."""
     results = []
-    tmp_dir = Path(settings.UPLOAD_TEMP_DIR)
+    # Stand-in for S3 in this demo — every uploaded original persists here,
+    # consolidating files that would otherwise be scattered across inboxes/chats.
+    storage_dir = Path(settings.SHARED_STORAGE_DIR)
 
     for upload in files:
         ext = Path(upload.filename).suffix.lower()
@@ -117,13 +126,14 @@ async def ingest_file(
             results.append({"filename": upload.filename, "status": "skipped", "reason": "unsupported_type"})
             continue
 
-        # Save to temp location
-        tmp_path = tmp_dir / upload.filename
-        with open(tmp_path, "wb") as f:
+        # Save to shared storage, prefixed to avoid collisions between suppliers
+        # uploading same-named files.
+        stored_path = storage_dir / f"{uuid.uuid4().hex[:8]}_{upload.filename}"
+        with open(stored_path, "wb") as f:
             shutil.copyfileobj(upload.file, f)
 
         result = _register_and_enqueue(
-            file_path=str(tmp_path),
+            file_path=str(stored_path),
             filename=upload.filename,
             supplier_name=supplier_name,
             db=db,
@@ -205,6 +215,91 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
 def list_processed_files(
     limit: int = 100,
     offset: int = 0,
+    filename: str | None = None,
     db: Session = Depends(get_db),
 ):
-    return db.query(ProcessedFile).order_by(ProcessedFile.processed_at.desc()).offset(offset).limit(limit).all()
+    q = db.query(ProcessedFile)
+    if filename:
+        q = q.filter(ProcessedFile.filename.ilike(f"%{filename}%"))
+    return q.order_by(ProcessedFile.processed_at.desc()).offset(offset).limit(limit).all()
+
+
+# ---------------------------------------------------------------------------
+# POST /ingest/jobs/{job_id}/cancel  — stop an in-progress job
+# ---------------------------------------------------------------------------
+@router.post("/jobs/{job_id}/cancel", response_model=IngestionJobOut)
+def cancel_job(job_id: str, db: Session = Depends(get_db)):
+    """
+    Mark a job as cancelled. The running pipeline checks this flag between
+    stages and stops at the next checkpoint (it cannot be interrupted
+    mid-stage, but no further stages will run).
+    """
+    job = db.query(IngestionJob).filter_by(id=job_id).first()
+    if not job:
+        raise http_bad_request(f"Job {job_id} not found")
+    if job.status in ("done", "error", "cancelled"):
+        raise http_bad_request(f"Job is already {job.status}")
+
+    job.status = "cancelled"
+    job.error_message = "Cancelled by user"
+    job.completed_at = datetime.utcnow()
+    db.commit()
+    db.refresh(job)
+    return job
+
+
+# ---------------------------------------------------------------------------
+# POST /ingest/jobs/cancel-all  — stop every in-progress job at once
+# (e.g. after a folder ingest queued many files and you want to abort all of them)
+# ---------------------------------------------------------------------------
+@router.post("/jobs/cancel-all")
+def cancel_all_jobs(db: Session = Depends(get_db)):
+    jobs = db.query(IngestionJob).filter(IngestionJob.status.in_(["pending", "queued", "running"])).all()
+    for job in jobs:
+        job.status = "cancelled"
+        job.error_message = "Cancelled by user"
+        job.completed_at = datetime.utcnow()
+    db.commit()
+    return {"cancelled_count": len(jobs)}
+
+
+# ---------------------------------------------------------------------------
+# DELETE /ingest/processed-files/{file_id}  — remove a file and everything
+# derived from it (jobs, products, images, embeddings, pics/ folder)
+# ---------------------------------------------------------------------------
+@router.delete("/processed-files/{file_id}")
+def delete_processed_file(file_id: str, db: Session = Depends(get_db)):
+    pf = db.query(ProcessedFile).filter_by(id=file_id).first()
+    if not pf:
+        raise http_bad_request(f"Processed file {file_id} not found")
+
+    document_id = pf.document_id
+
+    if document_id:
+        products = db.query(Product).filter_by(document_id=document_id).all()
+        for p in products:
+            db.query(ProductImage).filter_by(product_id=p.id).delete()
+            vector_store.delete("product_text", p.id)
+            db.delete(p)
+
+        assets = db.query(MediaAsset).filter_by(document_id=document_id).all()
+        for a in assets:
+            vector_store.delete("product_images", a.id)
+            db.delete(a)
+
+        db.flush()  # products/assets must be gone before the FK-constrained bulk deletes below
+
+        db.query(IngestionJob).filter_by(document_id=document_id).delete()
+        db.query(ProcessedFile).filter_by(document_id=document_id).delete()
+        db.query(Document).filter_by(id=document_id).delete()
+    else:
+        db.delete(pf)
+
+    db.commit()
+
+    if document_id:
+        folder = Path(settings.PICS_DIR) / document_id
+        if folder.exists():
+            shutil.rmtree(folder, ignore_errors=True)
+
+    return {"deleted": True, "document_id": document_id}

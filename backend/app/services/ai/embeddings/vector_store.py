@@ -3,6 +3,7 @@ PostgreSQL + pgvector-backed vector store.
 Stores embeddings in the embeddings table with cosine similarity search.
 """
 import json
+import uuid
 from typing import Optional
 
 from sqlalchemy import text
@@ -16,13 +17,14 @@ def upsert(collection: str, entity_id: str, vector: list[float], metadata: Optio
         db.execute(
             text(
                 """
-                INSERT INTO embeddings (entity_id, collection, embedding, metadata)
-                VALUES (:entity_id, :collection, CAST(:embedding AS vector), CAST(:metadata AS jsonb))
+                INSERT INTO embeddings (id, entity_id, collection, embedding, metadata)
+                VALUES (:id, :entity_id, :collection, CAST(:embedding AS vector), CAST(:metadata AS jsonb))
                 ON CONFLICT (entity_id, collection)
                 DO UPDATE SET embedding = EXCLUDED.embedding, metadata = EXCLUDED.metadata
                 """
             ),
             {
+                "id": str(uuid.uuid4()),
                 "entity_id": entity_id,
                 "collection": collection,
                 "embedding": str(vector),
@@ -74,6 +76,23 @@ def query(collection: str, query_vector: list[float], n_results: int = 20) -> li
         db.close()
 
 
+def get_vector(collection: str, entity_id: str) -> Optional[list[float]]:
+    db = SessionLocal()
+    try:
+        row = db.execute(
+            text(
+                "SELECT embedding::text AS v FROM embeddings "
+                "WHERE collection = :collection AND entity_id = :entity_id"
+            ),
+            {"collection": collection, "entity_id": entity_id},
+        ).fetchone()
+        if not row or not row.v:
+            return None
+        return json.loads(row.v)
+    finally:
+        db.close()
+
+
 def count(collection: str) -> int:
     db = SessionLocal()
     try:
@@ -82,5 +101,17 @@ def count(collection: str) -> int:
             {"collection": collection},
         ).fetchone()
         return int(row.c if row else 0)
+    finally:
+        db.close()
+
+
+def delete(collection: str, entity_id: str):
+    db = SessionLocal()
+    try:
+        db.execute(
+            text("DELETE FROM embeddings WHERE collection = :collection AND entity_id = :entity_id"),
+            {"collection": collection, "entity_id": entity_id},
+        )
+        db.commit()
     finally:
         db.close()

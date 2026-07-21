@@ -1,9 +1,11 @@
 "use client";
+import { useDemoMode } from "@/components/DemoModeProvider";
 import type { IngestionJob } from "@/lib/api";
 import { getJobs, getProcessedFiles, getProducts } from "@/lib/api";
 import { ClipboardList, Package, Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface Stats {
   totalProducts: number;
@@ -12,14 +14,37 @@ interface Stats {
   doneJobs: number;
 }
 
+const DEMO_JOB: IngestionJob = {
+  id: "demo-job",
+  document_id: "demo-product",
+  stage: "done",
+  status: "done",
+  progress: 100,
+  started_at: new Date().toISOString(),
+  completed_at: new Date().toISOString(),
+  error_message: null,
+  created_at: new Date().toISOString(),
+};
+
 export default function DashboardPage() {
+  const { isBackendUp } = useDemoMode();
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentJobs, setRecentJobs] = useState<IngestionJob[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getJobs(10), getProducts({ limit: 1 }), getProcessedFiles()]).then(
-      ([jobs, products, files]) => {
+    if (isBackendUp === null) return;
+
+    if (isBackendUp === false) {
+      setStats({ totalProducts: 1, processedFiles: 1, activeJobs: 0, doneJobs: 1 });
+      setRecentJobs([DEMO_JOB]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    Promise.all([getJobs(10), getProducts({ limit: 1 }), getProcessedFiles()])
+      .then(([jobs, products, files]) => {
         setRecentJobs(jobs.slice(0, 5));
         setStats({
           totalProducts: products.total,
@@ -27,10 +52,10 @@ export default function DashboardPage() {
           activeJobs: jobs.filter((j) => j.status === "running").length,
           doneJobs: jobs.filter((j) => j.status === "done").length,
         });
-        setLoading(false);
-      }
-    );
-  }, []);
+      })
+      .catch(() => toast.error("Failed to load dashboard data. Is the backend running?"))
+      .finally(() => setLoading(false));
+  }, [isBackendUp]);
 
   const statCards = [
     { label: "Products Indexed", value: stats?.totalProducts ?? "—", icon: Package, color: "bg-sky-500" },

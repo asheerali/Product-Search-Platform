@@ -2,6 +2,7 @@
 import clsx from "clsx";
 import {
     ClipboardList,
+    Inbox,
     LayoutDashboard,
     Package,
     Search,
@@ -12,6 +13,7 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/upload", label: "Data Upload", icon: Inbox },
   { href: "/ingest", label: "Ingest", icon: Upload },
   { href: "/search", label: "Search", icon: Search },
   { href: "/products", label: "Products", icon: Package },

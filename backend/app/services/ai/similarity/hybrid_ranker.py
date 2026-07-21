@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import MediaAsset, Product, ProductImage
 from app.schemas.search import SearchResultItem
+from app.services.ai.embeddings import vector_store
 from app.services.ai.embeddings.text_embedding import TextEmbeddingService
 
 logger = logging.getLogger(__name__)
@@ -31,9 +32,54 @@ class HybridRanker:
         raw = _embed.query(text=query, n_results=limit * 3)
         if not raw or db is None:
             return []
+        return self._hydrate(raw, limit=limit, filters=filters, db=db)
 
-        candidate_ids = [r["entity_id"] for r in raw]
+    def find_similar_to_product(
+        self,
+        product_id: str,
+        limit: int = 10,
+        db: Session | None = None,
+    ) -> list[SearchResultItem]:
+        """
+        Find products similar to an existing one, reusing its stored text
+        embedding (no LLM/embedding call needed) so a user can quickly see
+        comparable products — and their prices — while developing a new one.
+        """
+        if db is None:
+            return []
+
+        vector = vector_store.get_vector("product_text", product_id)
+        if vector is None:
+            # Embedding was never generated for this product (best-effort at
+            # ingest time) — fall back to re-embedding its own text fields.
+            product = db.query(Product).filter_by(id=product_id).first()
+            if not product:
+                return []
+            text_for_embed = " ".join(
+                filter(None, [product.title, product.category, product.material, product.style, product.description])
+            )
+            if not text_for_embed.strip():
+                return []
+            raw = _embed.query(text=text_for_embed, n_results=limit + 1)
+        else:
+            raw = vector_store.query("product_text", vector, n_results=limit + 1)
+
+        if not raw:
+            return []
+        return self._hydrate(raw, limit=limit, filters=None, db=db, exclude_id=product_id)
+
+    def _hydrate(
+        self,
+        raw: list[dict],
+        limit: int,
+        filters: dict[str, Any] | None,
+        db: Session,
+        exclude_id: str | None = None,
+    ) -> list[SearchResultItem]:
+        candidate_ids = [r["entity_id"] for r in raw if r["entity_id"] != exclude_id]
         score_map = {r["entity_id"]: r["score"] for r in raw}
+        if not candidate_ids:
+            return []
 
         q = db.query(Product).filter(Product.id.in_(candidate_ids))
 

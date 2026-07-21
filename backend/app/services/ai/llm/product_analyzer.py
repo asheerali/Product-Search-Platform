@@ -34,22 +34,48 @@ Data:
 {text}
 """
 
-IMAGE_ANALYSIS_PROMPT = """You are an expert furniture product analyst.
-Analyze this furniture product image carefully.
+IMAGE_ANALYSIS_PROMPT = """You are an expert furniture product data analyst with strong OCR ability.
 
-Return a JSON object with:
-- title (string): product name/type (e.g. "3-seater sofa", "dining chair")
+This image is one of two kinds:
+(a) a plain photo of a furniture product, or
+(b) a supplier spec sheet / price table listing one or more product variants, with
+    printed text such as model numbers, dimensions, CBM, materials, prices, and quantities.
+
+First decide which kind it is by looking for a table, grid lines, or printed text/numbers.
+
+If it is a spec sheet / table (kind b):
+- READ THE PRINTED TEXT EXACTLY. Never guess or invent a value that is printed in the
+  image — copy the digits/words as shown (model codes, sizes, prices, materials, qty).
+- Treat each distinct row/variant as a separate product (e.g. "Arm Chair", "Armless Chair",
+  "Chaise", "Sectional (3 Pcs)" under the same model are 4 separate products). Include the
+  base model code in each variant's title and in supplier_sku.
+- Only use visual inspection (color, style) to fill in gaps the text doesn't cover.
+- Set confidence close to 1.0 for values read directly as printed text.
+
+If it is a plain product photo with no table/text (kind a):
+- Return a single product based on your best visual estimate.
+- Set confidence lower (around 0.3-0.5) since these are visual guesses, not confirmed data.
+
+Return a JSON ARRAY of product objects (even if there is only one). Each object has:
+- title (string): product name, including model/variant name if present
 - category (string): one of [sofa, chair, table, bed, wardrobe, cabinet, desk, shelf, lamp, other]
-- material (string): likely material(s) based on visual appearance
+- material (string): material(s) — read literally from any material/fabric label if present
 - style (string): design style
-- color (string): primary color(s)
-- estimated_width_mm (number or null): estimated width based on proportions
-- estimated_height_mm (number or null): estimated height
-- description (string): detailed visual description useful for matching
-- confidence (number): 0-1
-- tags (array of strings): descriptive tags for search
+- color (string or null): primary color(s), or null if not visually determinable
+- width_mm (number or null): width in mm
+- depth_mm (number or null): depth in mm
+- height_mm (number or null): height in mm
+  (convert from cm with x10 or inches with x25.4; a combined "W*D*H" string like
+  "105*101*89" in cm is width*depth*height — split it into the three fields)
+- price (number or null): numeric price with currency symbols stripped
+- currency (string): currency code, default "USD"
+- supplier_sku (string or null): model/product code
+- description (string): concise description; for table rows, note row-specific details
+- raw_attributes (object): other printed values not covered above (e.g. cbm, qty,
+  packaging_unit, weight, price_per_meter)
+- confidence (number): 0-1, per the rules above
 
-Return ONLY valid JSON. No markdown.
+Return ONLY a valid JSON array. No markdown, no explanation.
 """
 
 
@@ -96,18 +122,23 @@ class ProductAnalyzer:
             logger.error("Text product extraction error: %s", e)
             return []
 
-    def extract_from_image(self, image_path: str) -> list[dict]:
-        """Analyze a product image and return extracted product data."""
+    def extract_from_image(self, image_path: str, supplier_name: str = "") -> list[dict]:
+        """Analyze a product image (photo or spec-sheet table) and return one or more
+        extracted product records, using the same field schema as extract_from_text."""
         try:
-            response = vision_completion(image_path=image_path, prompt=IMAGE_ANALYSIS_PROMPT)
+            response = vision_completion(
+                image_path=image_path, prompt=IMAGE_ANALYSIS_PROMPT, max_tokens=4096
+            )
             data = json.loads(response.strip())
             if isinstance(data, dict):
-                # Map estimated dimensions to standard fields
-                data["width_mm"] = data.pop("estimated_width_mm", None)
-                data["height_mm"] = data.pop("estimated_height_mm", None)
-                data["raw_attributes"] = {"tags": data.pop("tags", [])}
-                return [data]
-            return []
+                data = [data]
+            if not isinstance(data, list):
+                return []
+            products = [p for p in data if isinstance(p, dict)]
+            for p in products:
+                if supplier_name and not p.get("supplier_name"):
+                    p["supplier_name"] = supplier_name
+            return products
         except json.JSONDecodeError as e:
             logger.warning("Could not parse image analysis JSON: %s", e)
             return []
