@@ -66,7 +66,7 @@ export default function DashboardPage() {
 
   const statCards = [
     { label: "Products Indexed", href: "/products", value: stats?.totalProducts ?? "—", icon: Package, gradient: "from-sky-400 to-sky-600", glow: "shadow-sky-500/30" },
-    { label: "Files Processed", href: "/storage", value: stats?.processedFiles ?? "—", icon: Upload, gradient: "from-emerald-400 to-emerald-600", glow: "shadow-emerald-500/30" },
+    { label: "Files Stored", href: "/storage", value: stats?.processedFiles ?? "—", icon: Upload, gradient: "from-emerald-400 to-emerald-600", glow: "shadow-emerald-500/30" },
     { label: "Jobs Running", href: "/jobs", value: stats?.activeJobs ?? "—", icon: ClipboardList, gradient: "from-amber-400 to-amber-600", glow: "shadow-amber-500/30" },
     { label: "Jobs Done", href: "/jobs", value: stats?.doneJobs ?? "—", icon: Search, gradient: "from-violet-400 to-violet-600", glow: "shadow-violet-500/30" },
   ];
