@@ -1,4 +1,4 @@
-import type { Product, ProcessedFile, ProductListResponse, SearchResponse, SearchResultItem } from "@/lib/api";
+import type { IngestionJob, Product, ProcessedFile, ProductListResponse, SearchResponse, SearchResultItem } from "@/lib/api";
 
 // Canned data shown across the app when the backend is unreachable, so the
 // site stays browsable and the upload flow has something to demonstrate.
@@ -83,10 +83,10 @@ function toResultItem(p: Product, score: number): SearchResultItem {
 }
 
 export const DEMO_PRODUCTS_RESPONSE: ProductListResponse = {
-  total: 1,
+  total: DEMO_ALL_PRODUCTS.length,
   page: 1,
   limit: 20,
-  items: [DEMO_PRODUCT],
+  items: DEMO_ALL_PRODUCTS,
 };
 
 export const DEMO_SEARCH_RESPONSE: SearchResponse = {
@@ -112,5 +112,22 @@ export const DEMO_PROCESSED_FILES: ProcessedFile[] = [
     file_type: "pdf",
     status: "done",
     supplier_name: DEMO_PRODUCT.supplier_name,
+  },
+];
+
+// One uploaded catalog sheet → one ingestion job → four extracted product
+// variants (matches how the real pipeline works: Document/Job is 1:1 with
+// the source file, Product is 1:many off of it).
+export const DEMO_JOBS: IngestionJob[] = [
+  {
+    id: "demo-job",
+    document_id: "demo-product",
+    stage: "done",
+    status: "done",
+    progress: 100,
+    started_at: new Date(Date.now() - 60_000).toISOString(),
+    completed_at: new Date(Date.now() - 45_000).toISOString(),
+    error_message: null,
+    created_at: new Date(Date.now() - 60_000).toISOString(),
   },
 ];

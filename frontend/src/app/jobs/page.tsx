@@ -1,6 +1,8 @@
 "use client";
+import { useDemoMode } from "@/components/DemoModeProvider";
 import type { IngestionJob, ProcessedFile } from "@/lib/api";
 import { cancelAllJobs, cancelJob, deleteProcessedFile, getJobs, getProcessedFiles } from "@/lib/api";
+import { DEMO_JOBS, DEMO_PROCESSED_FILES } from "@/lib/demoData";
 import clsx from "clsx";
 import { OctagonX, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -18,12 +20,22 @@ const STATUS_COLORS: Record<string, string> = {
 const CANCELLABLE_STATUSES = new Set(["pending", "queued", "running"]);
 
 export default function JobsPage() {
+  const { isBackendUp } = useDemoMode();
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [files, setFiles] = useState<ProcessedFile[]>([]);
   const [fileFilter, setFileFilter] = useState("");
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(() => {
+    if (isBackendUp === null) return; // wait until we know
+
+    if (isBackendUp === false) {
+      setJobs(DEMO_JOBS);
+      setFiles(DEMO_PROCESSED_FILES);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     Promise.all([getJobs(100), getProcessedFiles(fileFilter || undefined)])
       .then(([j, f]) => {
@@ -32,15 +44,17 @@ export default function JobsPage() {
       })
       .catch(() => toast.error("Failed to load jobs/files. Is the backend running?"))
       .finally(() => setLoading(false));
-  }, [fileFilter]);
+  }, [fileFilter, isBackendUp]);
 
   useEffect(() => {
     refresh();
+    if (isBackendUp === false) return; // no need to poll canned demo data
     const interval = setInterval(refresh, 5000); // auto-refresh every 5s
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, isBackendUp]);
 
   const handleCancel = async (jobId: string) => {
+    if (isBackendUp === false) return toast.error("Demo mode — actions are disabled.");
     try {
       await cancelJob(jobId);
       toast.success("Job cancelled.");
@@ -51,6 +65,7 @@ export default function JobsPage() {
   };
 
   const handleCancelAll = async () => {
+    if (isBackendUp === false) return toast.error("Demo mode — actions are disabled.");
     const activeCount = jobs.filter((j) => CANCELLABLE_STATUSES.has(j.status)).length;
     if (activeCount === 0) return;
     if (!confirm(`Stop all ${activeCount} running/pending job(s)?`)) return;
@@ -64,6 +79,7 @@ export default function JobsPage() {
   };
 
   const handleDeleteFile = async (file: ProcessedFile) => {
+    if (isBackendUp === false) return toast.error("Demo mode — actions are disabled.");
     if (!confirm(`Delete "${file.filename}" and everything derived from it (products, images, embeddings)?`)) return;
     try {
       await deleteProcessedFile(file.id);

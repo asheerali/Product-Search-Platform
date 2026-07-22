@@ -2,6 +2,7 @@
 import { useDemoMode } from "@/components/DemoModeProvider";
 import type { IngestionJob } from "@/lib/api";
 import { getJobs, getProcessedFiles, getProducts } from "@/lib/api";
+import { DEMO_ALL_PRODUCTS, DEMO_JOBS, DEMO_PROCESSED_FILES } from "@/lib/demoData";
 import { ArrowRight, ClipboardList, Package, Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -20,18 +21,6 @@ interface Stats {
 // read the same hue in both modes; only surrounding text/chrome adapts).
 const STATUS_HEX = { done: "#0ca30c", running: "#fab219", error: "#d03b3b", other: "#94a3b8" };
 
-const DEMO_JOB: IngestionJob = {
-  id: "demo-job",
-  document_id: "demo-product",
-  stage: "done",
-  status: "done",
-  progress: 100,
-  started_at: new Date().toISOString(),
-  completed_at: new Date().toISOString(),
-  error_message: null,
-  created_at: new Date().toISOString(),
-};
-
 export default function DashboardPage() {
   const { isBackendUp } = useDemoMode();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -42,8 +31,15 @@ export default function DashboardPage() {
     if (isBackendUp === null) return;
 
     if (isBackendUp === false) {
-      setStats({ totalProducts: 1, processedFiles: 1, activeJobs: 0, doneJobs: 1, errorJobs: 0, otherJobs: 0 });
-      setRecentJobs([DEMO_JOB]);
+      setStats({
+        totalProducts: DEMO_ALL_PRODUCTS.length,
+        processedFiles: DEMO_PROCESSED_FILES.length,
+        activeJobs: 0,
+        doneJobs: DEMO_JOBS.length,
+        errorJobs: 0,
+        otherJobs: 0,
+      });
+      setRecentJobs(DEMO_JOBS);
       setLoading(false);
       return;
     }
