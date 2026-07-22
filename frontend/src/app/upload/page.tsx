@@ -5,7 +5,8 @@ import { useDemoMode } from "@/components/DemoModeProvider";
 import { DEMO_PRODUCT } from "@/lib/demoData";
 import { simulateDemoUpload } from "@/lib/demoUpload";
 import clsx from "clsx";
-import { CheckCircle, Inbox, Loader2, Sparkles, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Inbox, Loader2, Package, Sparkles, XCircle } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
@@ -15,23 +16,27 @@ export default function UploadPage() {
   const [supplierName, setSupplierName] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<IngestResult | null>(null);
-  const [showDemoProduct, setShowDemoProduct] = useState(false);
+  const [isDemoResult, setIsDemoResult] = useState(false);
+  const [done, setDone] = useState(false);
 
   const onDrop = useCallback(
     async (accepted: File[]) => {
       if (!accepted.length) return;
       setLoading(true);
       setResult(null);
-      setShowDemoProduct(false);
+      setDone(false);
       try {
         if (isBackendUp === false) {
           const res = await simulateDemoUpload(accepted);
           setResult(res);
-          setShowDemoProduct(true);
+          setIsDemoResult(true);
+          setDone(true);
           toast.success("Demo: simulated extraction complete.");
         } else {
           const res = await ingestFiles(accepted, supplierName || undefined);
           setResult(res);
+          setIsDemoResult(false);
+          setDone(true);
           const queued = res.results.filter((r) => r.status === "queued").length;
           const skipped = res.results.filter((r) => r.status === "skipped").length;
           toast.success(`Queued ${queued} file(s). ${skipped} skipped.`);
@@ -106,14 +111,26 @@ export default function UploadPage() {
       </div>
 
       {/* Results */}
-      {result && (
+      {result && isDemoResult && (
+        <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={20} className="text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <p className="font-medium text-slate-800 dark:text-slate-100">Document uploaded successfully</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Extraction complete — see the demo result below.</p>
+          </div>
+        </div>
+      )}
+
+      {result && !isDemoResult && (
         <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5">
           <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Results — {result.submitted} file(s)</h2>
           <ul className="space-y-2">
             {result.results.map((r, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
                 {r.status === "queued" ? (
-                  <CheckCircle size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+                  <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
                 ) : (
                   <XCircle size={16} className="text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />
                 )}
@@ -131,7 +148,7 @@ export default function UploadPage() {
       )}
 
       {/* Demo extracted product */}
-      {showDemoProduct && (
+      {isDemoResult && done && (
         <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5">
           <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
             <Sparkles size={16} className="text-sky-500 dark:text-sky-400" /> Extracted product (demo)
@@ -154,6 +171,15 @@ export default function UploadPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {done && (
+        <Link
+          href="/products"
+          className="mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-5 py-3 rounded-xl text-sm font-medium shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
+        >
+          <Package size={16} /> Go to Products <ArrowRight size={16} />
+        </Link>
       )}
     </div>
   );

@@ -69,10 +69,10 @@ export default function DashboardPage() {
   }, [isBackendUp]);
 
   const statCards = [
-    { label: "Products Indexed", value: stats?.totalProducts ?? "—", icon: Package, gradient: "from-sky-400 to-sky-600", glow: "shadow-sky-500/30" },
-    { label: "Files Processed", value: stats?.processedFiles ?? "—", icon: Upload, gradient: "from-emerald-400 to-emerald-600", glow: "shadow-emerald-500/30" },
-    { label: "Jobs Running", value: stats?.activeJobs ?? "—", icon: ClipboardList, gradient: "from-amber-400 to-amber-600", glow: "shadow-amber-500/30" },
-    { label: "Jobs Done", value: stats?.doneJobs ?? "—", icon: Search, gradient: "from-violet-400 to-violet-600", glow: "shadow-violet-500/30" },
+    { label: "Products Indexed", href: "/products", value: stats?.totalProducts ?? "—", icon: Package, gradient: "from-sky-400 to-sky-600", glow: "shadow-sky-500/30" },
+    { label: "Files Processed", href: "/storage", value: stats?.processedFiles ?? "—", icon: Upload, gradient: "from-emerald-400 to-emerald-600", glow: "shadow-emerald-500/30" },
+    { label: "Jobs Running", href: "/jobs", value: stats?.activeJobs ?? "—", icon: ClipboardList, gradient: "from-amber-400 to-amber-600", glow: "shadow-amber-500/30" },
+    { label: "Jobs Done", href: "/jobs", value: stats?.doneJobs ?? "—", icon: Search, gradient: "from-violet-400 to-violet-600", glow: "shadow-violet-500/30" },
   ];
 
   const quickActions = [
@@ -86,8 +86,9 @@ export default function DashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {statCards.map((card) => (
-          <div
+          <Link
             key={card.label}
+            href={card.href}
             className="group bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 flex items-center gap-4 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className={`bg-gradient-to-br ${card.gradient} p-3 rounded-xl shadow-lg ${card.glow} group-hover:scale-105 transition-transform duration-200`}>
@@ -99,7 +100,7 @@ export default function DashboardPage() {
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{card.label}</p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

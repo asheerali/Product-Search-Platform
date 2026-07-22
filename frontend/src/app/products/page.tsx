@@ -3,7 +3,7 @@ import { useDemoMode } from "@/components/DemoModeProvider";
 import type { Product, ProductListResponse } from "@/lib/api";
 import { deleteProduct, deleteProductsBulk, getProducts, resolveImageUrl } from "@/lib/api";
 import { DEMO_PRODUCTS_RESPONSE } from "@/lib/demoData";
-import { ChevronLeft, ChevronRight, ImageIcon, Package, Trash2, X, ZoomIn } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ImageIcon, Package, SlidersHorizontal, Trash2, X, ZoomIn } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -17,8 +17,16 @@ export default function ProductsPage() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [color, setColor] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null);
+
+  const hasMoreFilters = Boolean(color || minPrice || maxPrice || dateFrom || dateTo);
 
   const refresh = useCallback(() => {
     if (isBackendUp === null) return; // wait until we know
@@ -36,11 +44,16 @@ export default function ProductsPage() {
       title: title || undefined,
       category: category || undefined,
       supplier_name: supplier || undefined,
+      color: color || undefined,
+      min_price: minPrice ? Number(minPrice) : undefined,
+      max_price: maxPrice ? Number(maxPrice) : undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
     })
       .then(setData)
       .catch(() => toast.error("Failed to load products. Is the backend running?"))
       .finally(() => setLoading(false));
-  }, [page, title, category, supplier, isBackendUp]);
+  }, [page, title, category, supplier, color, minPrice, maxPrice, dateFrom, dateTo, isBackendUp]);
 
   useEffect(() => {
     refresh();
@@ -106,6 +119,17 @@ export default function ProductsPage() {
           value={supplier}
           onChange={(e) => { setSupplier(e.target.value); setPage(1); }}
         />
+        <button
+          onClick={() => setShowMoreFilters((v) => !v)}
+          className={`flex items-center gap-2 text-sm rounded-xl px-3 py-2 transition-colors ${
+            hasMoreFilters
+              ? "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 ring-1 ring-sky-200 dark:ring-sky-500/30"
+              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:shadow-md"
+          }`}
+        >
+          <SlidersHorizontal size={14} /> More filters
+          <ChevronDown size={14} className={showMoreFilters ? "rotate-180 transition-transform" : "transition-transform"} />
+        </button>
         {(title || category || supplier) && (
           <button
             onClick={handleDeleteFiltered}
@@ -120,6 +144,66 @@ export default function ProductsPage() {
           </span>
         )}
       </div>
+
+      {showMoreFilters && (
+        <div className="flex flex-wrap gap-3 mb-6 items-end bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 p-4">
+          <div>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Color</label>
+            <input
+              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-36 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              placeholder="e.g. grey"
+              value={color}
+              onChange={(e) => { setColor(e.target.value); setPage(1); }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Min Price</label>
+            <input
+              type="number"
+              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-28"
+              placeholder="0"
+              value={minPrice}
+              onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Max Price</label>
+            <input
+              type="number"
+              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-28"
+              placeholder="No limit"
+              value={maxPrice}
+              onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Added from</label>
+            <input
+              type="date"
+              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Added to</label>
+            <input
+              type="date"
+              className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+            />
+          </div>
+          {hasMoreFilters && (
+            <button
+              onClick={() => { setColor(""); setMinPrice(""); setMaxPrice(""); setDateFrom(""); setDateTo(""); setPage(1); }}
+              className="text-sm text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 px-3 py-2 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Grid */}
       {loading ? (

@@ -2,6 +2,7 @@
 import clsx from "clsx";
 import {
     ClipboardList,
+    Database,
     Inbox,
     LayoutDashboard,
     Package,
@@ -18,6 +19,7 @@ import { useEffect, useState } from "react";
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/upload", label: "Data Upload", icon: Inbox },
+  { href: "/storage", label: "Storage Files", icon: Database },
   { href: "/ingest", label: "Ingest", icon: Upload },
   { href: "/search", label: "Search", icon: Search },
   { href: "/products", label: "Products", icon: Package },

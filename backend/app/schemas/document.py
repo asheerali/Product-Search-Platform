@@ -40,6 +40,9 @@ class ProcessedFileOut(BaseModel):
     file_size: Optional[int]
     processed_at: datetime
     document_id: Optional[str]
+    file_type: Optional[str] = None
+    status: Optional[str] = None
+    supplier_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

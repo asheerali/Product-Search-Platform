@@ -139,6 +139,9 @@ async def ingest_file(
             db=db,
             background_tasks=background_tasks,
         )
+        if result.get("status") == "skipped":
+            # Duplicate/unsupported — don't leave a copy sitting in shared storage.
+            stored_path.unlink(missing_ok=True)
         results.append(result)
 
     return {"submitted": len(results), "results": results}
@@ -221,7 +224,18 @@ def list_processed_files(
     q = db.query(ProcessedFile)
     if filename:
         q = q.filter(ProcessedFile.filename.ilike(f"%{filename}%"))
-    return q.order_by(ProcessedFile.processed_at.desc()).offset(offset).limit(limit).all()
+    files = q.order_by(ProcessedFile.processed_at.desc()).offset(offset).limit(limit).all()
+
+    out = []
+    for pf in files:
+        d = ProcessedFileOut.model_validate(pf)
+        doc = db.query(Document).filter_by(id=pf.document_id).first() if pf.document_id else None
+        if doc:
+            d.file_type = doc.file_type
+            d.status = doc.status
+            d.supplier_name = doc.supplier_name
+        out.append(d)
+    return out
 
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview of your AI-powered product catalog." },
   "/upload": { title: "Data Upload", subtitle: "Bring every source into one place." },
+  "/storage": { title: "Storage Files", subtitle: "Everything stored in the shared data folder." },
   "/ingest": { title: "Ingest Files", subtitle: "Upload catalog files or point to a folder path." },
   "/search": { title: "Search", subtitle: "Find products by text or image similarity." },
   "/products": { title: "Products", subtitle: "Browse all extracted and normalized product records." },

@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -32,8 +33,11 @@ def list_products(
     supplier_name: Optional[str] = None,
     material: Optional[str] = None,
     style: Optional[str] = None,
+    color: Optional[str] = None,
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     q = db.query(Product)
@@ -47,10 +51,17 @@ def list_products(
         q = q.filter(Product.material.ilike(f"%{material}%"))
     if style:
         q = q.filter(Product.style.ilike(f"%{style}%"))
+    if color:
+        q = q.filter(Product.color.ilike(f"%{color}%"))
     if min_price is not None:
         q = q.filter(Product.price >= min_price)
     if max_price is not None:
         q = q.filter(Product.price <= max_price)
+    if date_from:
+        q = q.filter(Product.created_at >= datetime.fromisoformat(date_from))
+    if date_to:
+        # Treat as inclusive of the whole end day (date_to has no time component).
+        q = q.filter(Product.created_at < datetime.fromisoformat(date_to) + timedelta(days=1))
 
     total = q.count()
     items = q.offset((page - 1) * limit).limit(limit).all()

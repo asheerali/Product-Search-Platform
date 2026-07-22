@@ -1,11 +1,13 @@
-import type { Product, ProductListResponse, SearchResponse, SearchResultItem } from "@/lib/api";
+import type { Product, ProcessedFile, ProductListResponse, SearchResponse, SearchResultItem } from "@/lib/api";
 
 // Canned data shown across the app when the backend is unreachable, so the
 // site stays browsable and the upload flow has something to demonstrate.
-// The photo is a real supplier spec sheet bundled at
-// frontend/public/demo/sample-product.png.
+// Photos are real product shots bundled at frontend/public/demo/.
 
 const DEMO_IMAGE = "/demo/sample-product.png";
+const DEMO_IMAGE_2 = "/demo/sample-product-2.png";
+const DEMO_IMAGE_3 = "/demo/sample-product-3.png";
+const DEMO_IMAGE_4 = "/demo/sample-product-4.png";
 
 export const DEMO_PRODUCT: Product = {
   id: "demo-product",
@@ -38,6 +40,7 @@ const DEMO_VARIANTS: Product[] = [
     price: 108,
     width_mm: 1050,
     depth_mm: 1010,
+    image_urls: [DEMO_IMAGE_2],
   },
   {
     ...DEMO_PRODUCT,
@@ -46,6 +49,7 @@ const DEMO_VARIANTS: Product[] = [
     price: 84,
     width_mm: 910,
     depth_mm: 1010,
+    image_urls: [DEMO_IMAGE_4],
   },
   {
     ...DEMO_PRODUCT,
@@ -54,6 +58,7 @@ const DEMO_VARIANTS: Product[] = [
     price: 154,
     width_mm: 1050,
     depth_mm: 1680,
+    image_urls: [DEMO_IMAGE_3],
   },
 ];
 
@@ -95,3 +100,17 @@ export const DEMO_SIMILAR_RESPONSE: SearchResponse = {
   results: DEMO_VARIANTS.map((p, i) => toResultItem(p, 0.9 - i * 0.05)),
   total: DEMO_VARIANTS.length,
 };
+
+export const DEMO_PROCESSED_FILES: ProcessedFile[] = [
+  {
+    id: "demo-file",
+    filename: "CFL-S2172-catalog-sheet.pdf",
+    content_hash: "demo",
+    file_size: 482_000,
+    processed_at: new Date().toISOString(),
+    document_id: "demo-product",
+    file_type: "pdf",
+    status: "done",
+    supplier_name: DEMO_PRODUCT.supplier_name,
+  },
+];

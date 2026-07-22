@@ -4,7 +4,8 @@ import { ingestFiles, ingestFolder } from "@/lib/api";
 import { useDemoMode } from "@/components/DemoModeProvider";
 import { simulateDemoUpload } from "@/lib/demoUpload";
 import clsx from "clsx";
-import { AlertCircle, CheckCircle, Folder, Loader2, Upload, XCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle, CheckCircle2, Folder, Loader2, Package, Upload, XCircle } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
@@ -19,21 +20,28 @@ export default function IngestPage() {
   const [recursive, setRecursive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<IngestResult | null>(null);
+  const [isDemoResult, setIsDemoResult] = useState(false);
   const [folderResult, setFolderResult] = useState<Record<string, unknown> | null>(null);
+  const [done, setDone] = useState(false);
 
   const onDrop = useCallback(
     async (accepted: File[]) => {
       if (!accepted.length) return;
       setLoading(true);
       setResult(null);
+      setDone(false);
       try {
         if (isBackendUp === false) {
           const res = await simulateDemoUpload(accepted);
           setResult(res);
+          setIsDemoResult(true);
+          setDone(true);
           toast.success("Demo: simulated extraction complete.");
         } else {
           const res = await ingestFiles(accepted, supplierName || undefined);
           setResult(res);
+          setIsDemoResult(false);
+          setDone(true);
           const queued = res.results.filter((r) => r.status === "queued").length;
           const skipped = res.results.filter((r) => r.status === "skipped").length;
           toast.success(`Queued ${queued} file(s). ${skipped} skipped.`);
@@ -62,9 +70,11 @@ export default function IngestPage() {
     if (!folderPath.trim()) return toast.error("Please enter a folder path.");
     setLoading(true);
     setFolderResult(null);
+    setDone(false);
     try {
       const res = await ingestFolder(folderPath.trim(), supplierName || undefined, recursive) as Record<string, unknown>;
       setFolderResult(res);
+      setDone(true);
       const submitted = (res as Record<string, unknown>).submitted as number ?? 0;
       toast.success(`Submitted ${submitted} file(s) for ingestion.`);
     } catch (e: unknown) {
@@ -176,7 +186,19 @@ export default function IngestPage() {
       )}
 
       {/* Results */}
-      {result && (
+      {result && isDemoResult && (
+        <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={20} className="text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <p className="font-medium text-slate-800 dark:text-slate-100">Document uploaded successfully</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Demo: simulated extraction complete.</p>
+          </div>
+        </div>
+      )}
+
+      {result && !isDemoResult && (
         <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5">
           <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Results — {result.submitted} file(s)</h2>
           <ul className="space-y-2">
@@ -210,6 +232,15 @@ export default function IngestPage() {
             {JSON.stringify(folderResult, null, 2)}
           </pre>
         </div>
+      )}
+
+      {done && (
+        <Link
+          href="/products"
+          className="mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-5 py-3 rounded-xl text-sm font-medium shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
+        >
+          <Package size={16} /> Go to Products <ArrowRight size={16} />
+        </Link>
       )}
     </div>
   );

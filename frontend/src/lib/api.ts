@@ -30,6 +30,9 @@ export interface ProcessedFile {
   file_size: number | null;
   processed_at: string;
   document_id: string | null;
+  file_type: string | null;
+  status: string | null;
+  supplier_name: string | null;
 }
 
 export interface IngestResultItem {
@@ -149,8 +152,11 @@ export interface GetProductsParams {
   supplier_name?: string;
   material?: string;
   style?: string;
+  color?: string;
   min_price?: number;
   max_price?: number;
+  date_from?: string;
+  date_to?: string;
 }
 
 export async function getProducts(params: GetProductsParams = {}): Promise<ProductListResponse> {
