@@ -86,13 +86,13 @@ export default function ProductsPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6 items-center">
         <input
-          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 w-48 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-48 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="Search by name…"
           value={title}
           onChange={(e) => { setTitle(e.target.value); setPage(1); }}
         />
         <select
-          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500"
+          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow"
           value={category}
           onChange={(e) => { setCategory(e.target.value); setPage(1); }}
         >
@@ -101,7 +101,7 @@ export default function ProductsPage() {
           ))}
         </select>
         <input
-          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 w-48 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-48 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="Filter by supplier…"
           value={supplier}
           onChange={(e) => { setSupplier(e.target.value); setPage(1); }}
@@ -148,7 +148,7 @@ export default function ProductsPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 ring-1 ring-black/5 dark:ring-white/10 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
           >
             <ChevronLeft size={16} />
           </button>
@@ -156,7 +156,7 @@ export default function ProductsPage() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 ring-1 ring-black/5 dark:ring-white/10 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
           >
             <ChevronRight size={16} />
           </button>
@@ -179,7 +179,7 @@ function ProductCard({
 }) {
   const imgSrc = product.image_urls[0] ? resolveImageUrl(product.image_urls[0]) : null;
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm overflow-hidden hover:shadow-lg transition-shadow group relative">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 group relative">
       <button
         onClick={() => onDelete(product)}
         title="Delete product"

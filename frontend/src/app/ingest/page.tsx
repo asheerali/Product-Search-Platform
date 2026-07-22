@@ -84,7 +84,7 @@ export default function IngestPage() {
       <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 mb-4">
         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Supplier Name (optional)</label>
         <input
-          className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="e.g. U2 Living, Comfortlands…"
           value={supplierName}
           onChange={(e) => setSupplierName(e.target.value)}
@@ -98,8 +98,8 @@ export default function IngestPage() {
           className={clsx(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors",
             mode === "file"
-              ? "bg-sky-600 text-white shadow-sm"
-              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:bg-slate-50 dark:hover:bg-slate-800"
+              ? "bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-lg shadow-sky-500/25"
+              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:shadow-md"
           )}
         >
           <Upload size={16} /> Upload Files
@@ -109,8 +109,8 @@ export default function IngestPage() {
           className={clsx(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors",
             mode === "folder"
-              ? "bg-sky-600 text-white shadow-sm"
-              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:bg-slate-50 dark:hover:bg-slate-800"
+              ? "bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-lg shadow-sky-500/25"
+              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:shadow-md"
           )}
         >
           <Folder size={16} /> Folder Path
@@ -122,14 +122,16 @@ export default function IngestPage() {
         <div
           {...getRootProps()}
           className={clsx(
-            "bg-white dark:bg-slate-900 border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-colors",
+            "bg-white dark:bg-slate-900 border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-200",
             isDragActive
-              ? "border-sky-400 bg-sky-50 dark:bg-sky-500/10"
-              : "border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600"
+              ? "border-sky-400 bg-sky-50 dark:bg-sky-500/10 scale-[1.01] shadow-lg"
+              : "border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600 hover:shadow-md"
           )}
         >
           <input {...getInputProps()} />
-          <Upload className="mx-auto text-slate-400 dark:text-slate-500 mb-3" size={36} />
+          <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-sky-400 to-violet-500 flex items-center justify-center shadow-lg shadow-sky-500/25">
+            <Upload className="text-white" size={24} />
+          </div>
           <p className="text-slate-600 dark:text-slate-300 font-medium">
             {isDragActive ? "Drop files here…" : "Drag & drop files here, or click to select"}
           </p>
@@ -144,7 +146,7 @@ export default function IngestPage() {
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Folder Path</label>
             <input
-              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500"
               placeholder="C:\Users\...\files  or  /home/user/catalogs"
               value={folderPath}
               onChange={(e) => setFolderPath(e.target.value)}
@@ -165,7 +167,7 @@ export default function IngestPage() {
           <button
             onClick={handleFolderIngest}
             disabled={loading}
-            className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
+            className="bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-5 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Folder size={16} />}
             Start Ingestion

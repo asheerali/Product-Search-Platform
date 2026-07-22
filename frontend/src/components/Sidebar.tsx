@@ -8,6 +8,7 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     Search,
+    Sparkles,
     Upload,
 } from "lucide-react";
 import Link from "next/link";
@@ -46,30 +47,50 @@ export function Sidebar() {
   return (
     <aside
       className={clsx(
-        "bg-slate-900 text-white flex flex-col shrink-0 transition-[width] duration-200 ease-in-out",
-        collapsed ? "w-16" : "w-60",
+        "relative bg-gradient-to-b from-slate-900 to-slate-950 text-white flex flex-col shrink-0 transition-[width] duration-200 ease-in-out shadow-2xl shadow-black/40",
+        collapsed ? "w-16" : "w-64",
         !mounted && "duration-0"
       )}
     >
-      <div className={clsx("flex items-center border-b border-slate-800/80 h-16 shrink-0", collapsed ? "justify-center px-2" : "justify-between px-5")}>
-        {!collapsed && (
-          <div>
-            <span className="text-sky-400 font-bold text-lg leading-tight tracking-tight">
-              Product Search
-            </span>
-            <p className="text-slate-500 text-[11px] mt-0.5">AI Catalog Platform</p>
+      {/* subtle right-edge glow */}
+      <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-sky-500/20 to-transparent" />
+
+      <div className={clsx("flex items-center h-16 shrink-0", collapsed ? "justify-center px-2" : "justify-between px-4")}>
+        <div className={clsx("flex items-center gap-2.5", collapsed && "justify-center")}>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-400 to-violet-500 flex items-center justify-center shrink-0 shadow-lg shadow-sky-500/30">
+            <Sparkles size={16} className="text-white" />
           </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <span className="font-bold text-[15px] leading-tight tracking-tight block bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                Product Search
+              </span>
+              <p className="text-slate-500 text-[10.5px] mt-0.5">AI Catalog Platform</p>
+            </div>
+          )}
+        </div>
+        {!collapsed && (
+          <button
+            onClick={toggleCollapsed}
+            title="Collapse sidebar"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors shrink-0"
+          >
+            <PanelLeftClose size={17} />
+          </button>
         )}
-        <button
-          onClick={toggleCollapsed}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors shrink-0"
-        >
-          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-        </button>
       </div>
 
-      <nav className="flex-1 px-2.5 py-4 space-y-1">
+      {collapsed && (
+        <button
+          onClick={toggleCollapsed}
+          title="Expand sidebar"
+          className="mx-auto mb-2 p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <PanelLeftOpen size={17} />
+        </button>
+      )}
+
+      <nav className="flex-1 px-2.5 py-2 space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
@@ -78,14 +99,14 @@ export function Sidebar() {
               href={href}
               title={collapsed ? label : undefined}
               className={clsx(
-                "flex items-center gap-3 rounded-xl text-sm font-medium transition-colors",
+                "group flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150",
                 collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5",
                 active
-                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/50"
-                  : "text-slate-400 hover:bg-slate-800/80 hover:text-white"
+                  ? "bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-lg shadow-sky-950/50"
+                  : "text-slate-400 hover:bg-white/5 hover:text-white hover:translate-x-0.5"
               )}
             >
-              <Icon size={18} className="shrink-0" />
+              <Icon size={18} className={clsx("shrink-0 transition-transform", active && "drop-shadow")} />
               {!collapsed && label}
             </Link>
           );
@@ -93,7 +114,7 @@ export function Sidebar() {
       </nav>
 
       {!collapsed && (
-        <div className="px-5 py-4 border-t border-slate-800/80 text-slate-500 text-[11px]">
+        <div className="px-4 py-4 mx-3 mb-3 rounded-xl bg-white/[0.03] text-slate-500 text-[10.5px] leading-relaxed">
           v1.0.0 · Provider-Agnostic AI
         </div>
       )}

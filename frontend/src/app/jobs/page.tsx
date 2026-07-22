@@ -80,14 +80,14 @@ export default function JobsPage() {
         {jobs.some((j) => CANCELLABLE_STATUSES.has(j.status)) && (
           <button
             onClick={handleCancelAll}
-            className="flex items-center gap-2 text-sm border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 rounded-xl px-3 py-2 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+            className="flex items-center gap-2 text-sm bg-white dark:bg-slate-900 ring-1 ring-red-200 dark:ring-red-500/30 text-red-600 dark:text-red-400 rounded-xl px-3 py-2 hover:bg-red-50 dark:hover:bg-red-500/10 hover:shadow-md transition-all"
           >
             <OctagonX size={14} /> Stop All
           </button>
         )}
         <button
           onClick={refresh}
-          className="flex items-center gap-2 text-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          className="flex items-center gap-2 text-sm bg-white dark:bg-slate-900 ring-1 ring-black/5 dark:ring-white/10 text-slate-600 dark:text-slate-300 rounded-xl px-3 py-2 hover:shadow-md transition-all"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
         </button>
@@ -109,7 +109,7 @@ export default function JobsPage() {
           </thead>
           <tbody>
             {jobs.map((job) => (
-              <tr key={job.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+              <tr key={job.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                 <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{job.id.slice(0, 8)}…</td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{job.document_id.slice(0, 8)}…</td>
                 <td className="px-4 py-3 capitalize text-slate-600 dark:text-slate-300">{job.stage || "—"}</td>
@@ -122,7 +122,7 @@ export default function JobsPage() {
                   <div className="flex items-center gap-2">
                     <div className="w-20 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
                       <div
-                        className={clsx("h-1.5 rounded-full", job.status === "error" ? "bg-red-400" : "bg-sky-500")}
+                        className={clsx("h-1.5 rounded-full transition-all", job.status === "error" ? "bg-red-400" : "bg-gradient-to-r from-sky-400 to-sky-500")}
                         style={{ width: `${job.progress}%` }}
                       />
                     </div>
@@ -162,7 +162,7 @@ export default function JobsPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-slate-700 dark:text-slate-200">Processed Files</h2>
         <input
-          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="Filter by filename…"
           value={fileFilter}
           onChange={(e) => setFileFilter(e.target.value)}
@@ -181,7 +181,7 @@ export default function JobsPage() {
           </thead>
           <tbody>
             {files.map((file) => (
-              <tr key={file.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/40">
+              <tr key={file.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                 <td className="px-4 py-3 text-slate-700 dark:text-slate-200">{file.filename}</td>
                 <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                   {file.file_size ? `${(file.file_size / 1024).toFixed(0)} KB` : "—"}

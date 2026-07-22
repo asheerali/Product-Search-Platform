@@ -64,8 +64,8 @@ export default function SearchPage() {
           className={clsx(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors",
             mode === "text"
-              ? "bg-sky-600 text-white shadow-sm"
-              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:bg-slate-50 dark:hover:bg-slate-800"
+              ? "bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-lg shadow-sky-500/25"
+              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:shadow-md"
           )}
         >
           <Search size={16} /> Text Search
@@ -75,8 +75,8 @@ export default function SearchPage() {
           className={clsx(
             "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors",
             mode === "image"
-              ? "bg-sky-600 text-white shadow-sm"
-              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:bg-slate-50 dark:hover:bg-slate-800"
+              ? "bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-lg shadow-sky-500/25"
+              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:shadow-md"
           )}
         >
           <ImageIcon size={16} /> Image Search
@@ -87,7 +87,7 @@ export default function SearchPage() {
       {mode === "text" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 flex gap-3">
           <input
-            className="flex-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            className="flex-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500"
             placeholder="e.g. modern grey fabric sofa, wooden dining table…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -96,7 +96,7 @@ export default function SearchPage() {
           <button
             onClick={handleSearch}
             disabled={loading}
-            className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
+            className="bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
             Search
@@ -135,7 +135,7 @@ export default function SearchPage() {
           <button
             onClick={handleSearch}
             disabled={loading || !queryImage}
-            className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
+            className="bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
             Find Similar Products
@@ -166,7 +166,7 @@ export default function SearchPage() {
 function ResultCard({ item }: { item: SearchResultItem }) {
   const imgSrc = item.image_url ? resolveImageUrl(item.image_url) : null;
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-4 flex gap-4 hover:shadow-lg transition-shadow">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-4 flex gap-4 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200">
       <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 overflow-hidden flex items-center justify-center">
         {imgSrc ? (
           <img src={imgSrc} alt={item.title ?? ""} className="w-full h-full object-cover" />

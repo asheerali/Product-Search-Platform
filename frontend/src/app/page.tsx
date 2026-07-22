@@ -2,7 +2,7 @@
 import { useDemoMode } from "@/components/DemoModeProvider";
 import type { IngestionJob } from "@/lib/api";
 import { getJobs, getProcessedFiles, getProducts } from "@/lib/api";
-import { ClipboardList, Package, Search, Upload } from "lucide-react";
+import { ArrowRight, ClipboardList, Package, Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -69,10 +69,16 @@ export default function DashboardPage() {
   }, [isBackendUp]);
 
   const statCards = [
-    { label: "Products Indexed", value: stats?.totalProducts ?? "—", icon: Package, gradient: "from-sky-500 to-sky-600" },
-    { label: "Files Processed", value: stats?.processedFiles ?? "—", icon: Upload, gradient: "from-emerald-500 to-emerald-600" },
-    { label: "Jobs Running", value: stats?.activeJobs ?? "—", icon: ClipboardList, gradient: "from-amber-500 to-amber-600" },
-    { label: "Jobs Done", value: stats?.doneJobs ?? "—", icon: Search, gradient: "from-violet-500 to-violet-600" },
+    { label: "Products Indexed", value: stats?.totalProducts ?? "—", icon: Package, gradient: "from-sky-400 to-sky-600", glow: "shadow-sky-500/30" },
+    { label: "Files Processed", value: stats?.processedFiles ?? "—", icon: Upload, gradient: "from-emerald-400 to-emerald-600", glow: "shadow-emerald-500/30" },
+    { label: "Jobs Running", value: stats?.activeJobs ?? "—", icon: ClipboardList, gradient: "from-amber-400 to-amber-600", glow: "shadow-amber-500/30" },
+    { label: "Jobs Done", value: stats?.doneJobs ?? "—", icon: Search, gradient: "from-violet-400 to-violet-600", glow: "shadow-violet-500/30" },
+  ];
+
+  const quickActions = [
+    { href: "/upload", icon: Upload, tint: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400", title: "Ingest Files", desc: "Upload PDFs, PPTX, XLSX, emails or provide a folder path." },
+    { href: "/search", icon: Search, tint: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400", title: "Search Products", desc: "Text semantic search or upload a photo to find similar products." },
+    { href: "/products", icon: Package, tint: "bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400", title: "Browse Catalog", desc: "Filter and explore all extracted product records." },
   ];
 
   return (
@@ -82,14 +88,14 @@ export default function DashboardPage() {
         {statCards.map((card) => (
           <div
             key={card.label}
-            className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 flex items-center gap-4 hover:shadow-md transition-shadow"
+            className="group bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 flex items-center gap-4 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
           >
-            <div className={`bg-gradient-to-br ${card.gradient} p-3 rounded-xl shadow-sm`}>
+            <div className={`bg-gradient-to-br ${card.gradient} p-3 rounded-xl shadow-lg ${card.glow} group-hover:scale-105 transition-transform duration-200`}>
               <card.icon className="text-white" size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-                {loading ? <span className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded w-8 h-6 block" /> : card.value}
+              <p className="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight tabular-nums">
+                {loading ? <span className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded w-10 h-7 block" /> : card.value}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{card.label}</p>
             </div>
@@ -105,30 +111,22 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Link
-          href="/upload"
-          className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 hover:shadow-md transition-shadow group"
-        >
-          <Upload className="text-sky-500 mb-3" size={24} />
-          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Ingest Files</h3>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Upload PDFs, PPTX, XLSX, emails or provide a folder path.</p>
-        </Link>
-        <Link
-          href="/search"
-          className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 hover:shadow-md transition-shadow group"
-        >
-          <Search className="text-emerald-500 mb-3" size={24} />
-          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Search Products</h3>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Text semantic search or upload a photo to find similar products.</p>
-        </Link>
-        <Link
-          href="/products"
-          className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 hover:shadow-md transition-shadow group"
-        >
-          <Package className="text-violet-500 mb-3" size={24} />
-          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Browse Catalog</h3>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Filter and explore all extracted product records.</p>
-        </Link>
+        {quickActions.map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="group bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
+          >
+            <div className="flex items-start justify-between">
+              <div className={`${action.tint} p-2.5 rounded-xl`}>
+                <action.icon size={20} />
+              </div>
+              <ArrowRight size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:translate-x-1 transition-all duration-200 mt-1.5" />
+            </div>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mt-3">{action.title}</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{action.desc}</p>
+          </Link>
+        ))}
       </div>
 
       {/* Recent jobs */}
@@ -148,18 +146,21 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {recentJobs.map((job) => (
-                <tr key={job.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
-                  <td className="py-2 text-slate-600 dark:text-slate-300 font-mono text-xs">{job.id.slice(0, 8)}…</td>
-                  <td className="py-2 text-slate-600 dark:text-slate-300 capitalize">{job.stage || "—"}</td>
-                  <td className="py-2">
+                <tr key={job.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                  <td className="py-2.5 text-slate-600 dark:text-slate-300 font-mono text-xs">{job.id.slice(0, 8)}…</td>
+                  <td className="py-2.5 text-slate-600 dark:text-slate-300 capitalize">{job.stage || "—"}</td>
+                  <td className="py-2.5">
                     <StatusBadge status={job.status} />
                   </td>
-                  <td className="py-2">
-                    <div className="w-24 bg-slate-100 dark:bg-slate-800 rounded-full h-2">
-                      <div
-                        className="bg-sky-500 h-2 rounded-full transition-all"
-                        style={{ width: `${job.progress}%` }}
-                      />
+                  <td className="py-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-slate-100 dark:bg-slate-800 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-sky-400 to-sky-500 h-2 rounded-full transition-all"
+                          style={{ width: `${job.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-400 dark:text-slate-500 tabular-nums">{job.progress}%</span>
                     </div>
                   </td>
                 </tr>
@@ -191,7 +192,7 @@ function JobsByStatusChart({ stats, loading }: { stats: Stats | null; loading: b
 
   return (
     <div>
-      <div className="flex gap-[2px] h-2.5 rounded-full overflow-hidden w-full" role="img" aria-label="Jobs by status breakdown">
+      <div className="flex gap-[2px] h-3 rounded-full overflow-hidden w-full" role="img" aria-label="Jobs by status breakdown">
         {segments
           .filter((s) => s.value > 0)
           .map((s) => (
@@ -199,7 +200,7 @@ function JobsByStatusChart({ stats, loading }: { stats: Stats | null; loading: b
               key={s.key}
               title={`${s.label}: ${s.value}`}
               style={{ flexGrow: s.value, backgroundColor: s.color }}
-              className="h-full"
+              className="h-full transition-all"
             />
           ))}
       </div>
@@ -209,7 +210,7 @@ function JobsByStatusChart({ stats, loading }: { stats: Stats | null; loading: b
           .map((s) => (
             <div key={s.key} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-              {s.label} <span className="text-slate-400 dark:text-slate-500">({s.value})</span>
+              {s.label} <span className="text-slate-400 dark:text-slate-500 tabular-nums">({s.value})</span>
             </div>
           ))}
       </div>

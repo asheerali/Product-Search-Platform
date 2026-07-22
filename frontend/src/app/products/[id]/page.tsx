@@ -71,8 +71,8 @@ export default function ProductDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <Link href="/products" className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 mb-4">
-        <ArrowLeft size={14} /> Back to Products
+      <Link href="/products" className="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 mb-4 group transition-colors">
+        <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" /> Back to Products
       </Link>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-6 flex flex-col md:flex-row gap-6">
@@ -94,7 +94,7 @@ export default function ProductDetailPage() {
           </div>
 
           {product.price != null && (
-            <p className="text-sky-600 dark:text-sky-400 font-bold text-2xl mt-3">
+            <p className="bg-gradient-to-r from-sky-500 to-violet-500 bg-clip-text text-transparent font-bold text-3xl mt-3 tabular-nums">
               {product.currency} {product.price.toLocaleString()}
             </p>
           )}
@@ -172,7 +172,7 @@ function SimilarCard({ item }: { item: SearchResultItem }) {
   return (
     <Link
       href={`/products/${item.product_id}`}
-      className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm overflow-hidden hover:shadow-lg transition-shadow block"
+      className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 block"
     >
       <div className="h-32 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
         {imgSrc ? (

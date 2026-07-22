@@ -16,11 +16,12 @@ export function useTheme(): ThemeState {
 
 // Inline script injected into <head> so the correct theme class is applied
 // before hydration — avoids a flash of the wrong theme on load.
+// Defaults to light regardless of OS preference; only an explicit stored
+// choice (via the toggle) switches to dark.
 export const THEME_INIT_SCRIPT = `
 (function () {
   try {
-    var stored = localStorage.getItem("theme");
-    var dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var dark = localStorage.getItem("theme") === "dark";
     document.documentElement.classList.toggle("dark", dark);
   } catch (e) {}
 })();
