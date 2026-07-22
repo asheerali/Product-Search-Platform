@@ -2,37 +2,75 @@
 import { useDemoMode } from "@/components/DemoModeProvider";
 import type { Product, ProductListResponse } from "@/lib/api";
 import { deleteProduct, deleteProductsBulk, getProducts, resolveImageUrl } from "@/lib/api";
-import { DEMO_PRODUCTS_RESPONSE } from "@/lib/demoData";
-import { ChevronDown, ChevronLeft, ChevronRight, ImageIcon, Package, SlidersHorizontal, Trash2, X, ZoomIn } from "lucide-react";
+import { DEMO_ALL_PRODUCTS } from "@/lib/demoData";
+import { ChevronDown, ChevronLeft, ChevronRight, ImageIcon, Package, Search, SlidersHorizontal, Trash2, X, ZoomIn } from "lucide-react";
 import Link from "next/link";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 const CATEGORIES = ["", "sofa", "chair", "table", "bed", "wardrobe", "cabinet", "desk", "shelf", "lamp", "other"];
 
+interface FilterState {
+  title: string;
+  category: string;
+  supplier: string;
+  color: string;
+  minPrice: string;
+  maxPrice: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
+const EMPTY_FILTERS: FilterState = {
+  title: "", category: "", supplier: "", color: "", minPrice: "", maxPrice: "", dateFrom: "", dateTo: "",
+};
+
+function matchesDemoFilters(p: Product, f: FilterState): boolean {
+  if (f.title && !(p.title ?? "").toLowerCase().includes(f.title.toLowerCase())) return false;
+  if (f.category && p.category !== f.category) return false;
+  if (f.supplier && !(p.supplier_name ?? "").toLowerCase().includes(f.supplier.toLowerCase())) return false;
+  if (f.color && !(p.color ?? "").toLowerCase().includes(f.color.toLowerCase())) return false;
+  if (f.minPrice && (p.price ?? -Infinity) < Number(f.minPrice)) return false;
+  if (f.maxPrice && (p.price ?? Infinity) > Number(f.maxPrice)) return false;
+  if (f.dateFrom && new Date(p.created_at) < new Date(f.dateFrom)) return false;
+  if (f.dateTo) {
+    const to = new Date(f.dateTo);
+    to.setDate(to.getDate() + 1);
+    if (new Date(p.created_at) >= to) return false;
+  }
+  return true;
+}
+
 export default function ProductsPage() {
   const { isBackendUp } = useDemoMode();
   const [data, setData] = useState<ProductListResponse | null>(null);
   const [page, setPage] = useState(1);
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
-  const [supplier, setSupplier] = useState("");
-  const [color, setColor] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [removedDemoIds, setRemovedDemoIds] = useState<Set<string>>(new Set());
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [zoomProduct, setZoomProduct] = useState<Product | null>(null);
 
-  const hasMoreFilters = Boolean(color || minPrice || maxPrice || dateFrom || dateTo);
+  const hasMoreFilters = Boolean(filters.color || filters.minPrice || filters.maxPrice || filters.dateFrom || filters.dateTo);
+  const setField = (key: keyof FilterState) => (value: string) => setFilters((f) => ({ ...f, [key]: value }));
+
+  const applyFilters = useCallback(() => {
+    setAppliedFilters(filters);
+    setPage(1);
+  }, [filters]);
+
+  const onFilterKeyDown = (e: ReactKeyboardEvent) => {
+    if (e.key === "Enter") applyFilters();
+  };
 
   const refresh = useCallback(() => {
     if (isBackendUp === null) return; // wait until we know
 
     if (isBackendUp === false) {
-      setData(DEMO_PRODUCTS_RESPONSE);
+      const items = DEMO_ALL_PRODUCTS.filter((p) => !removedDemoIds.has(p.id) && matchesDemoFilters(p, appliedFilters));
+      setData({ total: items.length, page: 1, limit: 20, items });
       setLoading(false);
       return;
     }
@@ -41,19 +79,19 @@ export default function ProductsPage() {
     getProducts({
       page,
       limit: 20,
-      title: title || undefined,
-      category: category || undefined,
-      supplier_name: supplier || undefined,
-      color: color || undefined,
-      min_price: minPrice ? Number(minPrice) : undefined,
-      max_price: maxPrice ? Number(maxPrice) : undefined,
-      date_from: dateFrom || undefined,
-      date_to: dateTo || undefined,
+      title: appliedFilters.title || undefined,
+      category: appliedFilters.category || undefined,
+      supplier_name: appliedFilters.supplier || undefined,
+      color: appliedFilters.color || undefined,
+      min_price: appliedFilters.minPrice ? Number(appliedFilters.minPrice) : undefined,
+      max_price: appliedFilters.maxPrice ? Number(appliedFilters.maxPrice) : undefined,
+      date_from: appliedFilters.dateFrom || undefined,
+      date_to: appliedFilters.dateTo || undefined,
     })
       .then(setData)
       .catch(() => toast.error("Failed to load products. Is the backend running?"))
       .finally(() => setLoading(false));
-  }, [page, title, category, supplier, color, minPrice, maxPrice, dateFrom, dateTo, isBackendUp]);
+  }, [page, appliedFilters, isBackendUp, removedDemoIds]);
 
   useEffect(() => {
     refresh();
@@ -62,8 +100,14 @@ export default function ProductsPage() {
   const totalPages = data ? Math.ceil(data.total / 20) : 1;
 
   const handleDelete = async (product: Product) => {
-    if (isBackendUp === false) return toast.error("Demo mode — delete is disabled.");
     if (!confirm(`Delete "${product.title ?? "this product"}"?`)) return;
+
+    if (isBackendUp === false) {
+      setRemovedDemoIds((prev) => new Set(prev).add(product.id));
+      toast.success("Demo: product removed (not persisted).");
+      return;
+    }
+
     try {
       await deleteProduct(product.id);
       toast.success("Product deleted.");
@@ -74,17 +118,25 @@ export default function ProductsPage() {
   };
 
   const handleDeleteFiltered = async () => {
-    if (isBackendUp === false) return toast.error("Demo mode — delete is disabled.");
-    if (!title && !category && !supplier) {
+    if (!appliedFilters.title && !appliedFilters.category && !appliedFilters.supplier) {
       toast.error("Set a name, category, or supplier filter first.");
       return;
     }
     if (!confirm(`Delete all ${data?.total ?? 0} product(s) matching the current filters? This cannot be undone.`)) return;
+
+    if (isBackendUp === false) {
+      const idsToRemove = (data?.items ?? []).map((p) => p.id);
+      setRemovedDemoIds((prev) => new Set([...prev, ...idsToRemove]));
+      toast.success(`Demo: removed ${idsToRemove.length} product(s) (not persisted).`);
+      setPage(1);
+      return;
+    }
+
     try {
       const res = await deleteProductsBulk({
-        title: title || undefined,
-        category: category || undefined,
-        supplier_name: supplier || undefined,
+        title: appliedFilters.title || undefined,
+        category: appliedFilters.category || undefined,
+        supplier_name: appliedFilters.supplier || undefined,
       });
       toast.success(`Deleted ${res.deleted_count} product(s).`);
       setPage(1);
@@ -101,13 +153,14 @@ export default function ProductsPage() {
         <input
           className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-48 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="Search by name…"
-          value={title}
-          onChange={(e) => { setTitle(e.target.value); setPage(1); }}
+          value={filters.title}
+          onChange={(e) => setField("title")(e.target.value)}
+          onKeyDown={onFilterKeyDown}
         />
         <select
           className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow"
-          value={category}
-          onChange={(e) => { setCategory(e.target.value); setPage(1); }}
+          value={filters.category}
+          onChange={(e) => setField("category")(e.target.value)}
         >
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>{c || "All Categories"}</option>
@@ -116,9 +169,16 @@ export default function ProductsPage() {
         <input
           className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-48 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="Filter by supplier…"
-          value={supplier}
-          onChange={(e) => { setSupplier(e.target.value); setPage(1); }}
+          value={filters.supplier}
+          onChange={(e) => setField("supplier")(e.target.value)}
+          onKeyDown={onFilterKeyDown}
         />
+        <button
+          onClick={applyFilters}
+          className="flex items-center gap-2 text-sm bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white rounded-xl px-4 py-2 shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
+        >
+          <Search size={14} /> Apply Filters
+        </button>
         <button
           onClick={() => setShowMoreFilters((v) => !v)}
           className={`flex items-center gap-2 text-sm rounded-xl px-3 py-2 transition-colors ${
@@ -130,7 +190,7 @@ export default function ProductsPage() {
           <SlidersHorizontal size={14} /> More filters
           <ChevronDown size={14} className={showMoreFilters ? "rotate-180 transition-transform" : "transition-transform"} />
         </button>
-        {(title || category || supplier) && (
+        {(appliedFilters.title || appliedFilters.category || appliedFilters.supplier) && (
           <button
             onClick={handleDeleteFiltered}
             className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-xl px-3 py-2 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
@@ -152,8 +212,9 @@ export default function ProductsPage() {
             <input
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-36 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               placeholder="e.g. grey"
-              value={color}
-              onChange={(e) => { setColor(e.target.value); setPage(1); }}
+              value={filters.color}
+              onChange={(e) => setField("color")(e.target.value)}
+              onKeyDown={onFilterKeyDown}
             />
           </div>
           <div>
@@ -162,8 +223,9 @@ export default function ProductsPage() {
               type="number"
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-28"
               placeholder="0"
-              value={minPrice}
-              onChange={(e) => { setMinPrice(e.target.value); setPage(1); }}
+              value={filters.minPrice}
+              onChange={(e) => setField("minPrice")(e.target.value)}
+              onKeyDown={onFilterKeyDown}
             />
           </div>
           <div>
@@ -172,8 +234,9 @@ export default function ProductsPage() {
               type="number"
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow w-28"
               placeholder="No limit"
-              value={maxPrice}
-              onChange={(e) => { setMaxPrice(e.target.value); setPage(1); }}
+              value={filters.maxPrice}
+              onChange={(e) => setField("maxPrice")(e.target.value)}
+              onKeyDown={onFilterKeyDown}
             />
           </div>
           <div>
@@ -181,8 +244,8 @@ export default function ProductsPage() {
             <input
               type="date"
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow"
-              value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              value={filters.dateFrom}
+              onChange={(e) => setField("dateFrom")(e.target.value)}
             />
           </div>
           <div>
@@ -190,13 +253,24 @@ export default function ProductsPage() {
             <input
               type="date"
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow"
-              value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              value={filters.dateTo}
+              onChange={(e) => setField("dateTo")(e.target.value)}
             />
           </div>
+          <button
+            onClick={applyFilters}
+            className="flex items-center gap-2 text-sm bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white rounded-xl px-4 py-2 shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
+          >
+            <Search size={14} /> Apply
+          </button>
           {hasMoreFilters && (
             <button
-              onClick={() => { setColor(""); setMinPrice(""); setMaxPrice(""); setDateFrom(""); setDateTo(""); setPage(1); }}
+              onClick={() => {
+                const cleared = { ...filters, color: "", minPrice: "", maxPrice: "", dateFrom: "", dateTo: "" };
+                setFilters(cleared);
+                setAppliedFilters(cleared);
+                setPage(1);
+              }}
               className="text-sm text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 px-3 py-2 transition-colors"
             >
               Clear
