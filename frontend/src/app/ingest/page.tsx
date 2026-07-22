@@ -76,16 +76,15 @@ export default function IngestPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-slate-800 mb-1">Ingest Files</h1>
-      <p className="text-slate-500 text-sm mb-6">
-        Upload catalog files or point to a folder path. Duplicate files (by hash) are automatically skipped.
+      <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+        Duplicate files (by hash) are automatically skipped.
       </p>
 
       {/* Supplier name */}
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-4">
-        <label className="block text-sm font-medium text-slate-700 mb-1">Supplier Name (optional)</label>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 mb-4">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Supplier Name (optional)</label>
         <input
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+          className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="e.g. U2 Living, Comfortlands…"
           value={supplierName}
           onChange={(e) => setSupplierName(e.target.value)}
@@ -97,8 +96,10 @@ export default function IngestPage() {
         <button
           onClick={() => setMode("file")}
           className={clsx(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-            mode === "file" ? "bg-sky-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors",
+            mode === "file"
+              ? "bg-sky-600 text-white shadow-sm"
+              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:bg-slate-50 dark:hover:bg-slate-800"
           )}
         >
           <Upload size={16} /> Upload Files
@@ -106,8 +107,10 @@ export default function IngestPage() {
         <button
           onClick={() => setMode("folder")}
           className={clsx(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-            mode === "folder" ? "bg-sky-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors",
+            mode === "folder"
+              ? "bg-sky-600 text-white shadow-sm"
+              : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:bg-slate-50 dark:hover:bg-slate-800"
           )}
         >
           <Folder size={16} /> Folder Path
@@ -119,36 +122,38 @@ export default function IngestPage() {
         <div
           {...getRootProps()}
           className={clsx(
-            "bg-white border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors",
-            isDragActive ? "border-sky-400 bg-sky-50" : "border-slate-200 hover:border-sky-300"
+            "bg-white dark:bg-slate-900 border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-colors",
+            isDragActive
+              ? "border-sky-400 bg-sky-50 dark:bg-sky-500/10"
+              : "border-slate-200 dark:border-slate-700 hover:border-sky-300 dark:hover:border-sky-600"
           )}
         >
           <input {...getInputProps()} />
-          <Upload className="mx-auto text-slate-400 mb-3" size={36} />
-          <p className="text-slate-600 font-medium">
+          <Upload className="mx-auto text-slate-400 dark:text-slate-500 mb-3" size={36} />
+          <p className="text-slate-600 dark:text-slate-300 font-medium">
             {isDragActive ? "Drop files here…" : "Drag & drop files here, or click to select"}
           </p>
-          <p className="text-slate-400 text-sm mt-1">PDF, PPTX, XLSX, JPG, PNG supported</p>
+          <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">PDF, PPTX, XLSX, JPG, PNG supported</p>
           {loading && <Loader2 className="animate-spin mx-auto mt-4 text-sky-500" size={24} />}
         </div>
       )}
 
       {/* Folder path input */}
       {mode === "folder" && (
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Folder Path</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Folder Path</label>
             <input
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-400"
+              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               placeholder="C:\Users\...\files  or  /home/user/catalogs"
               value={folderPath}
               onChange={(e) => setFolderPath(e.target.value)}
             />
-            <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
+            <p className="text-slate-400 dark:text-slate-500 text-xs mt-1 flex items-center gap-1">
               <AlertCircle size={12} /> Must be accessible from the backend server.
             </p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
             <input
               type="checkbox"
               checked={recursive}
@@ -160,7 +165,7 @@ export default function IngestPage() {
           <button
             onClick={handleFolderIngest}
             disabled={loading}
-            className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+            className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Folder size={16} />}
             Start Ingestion
@@ -170,24 +175,24 @@ export default function IngestPage() {
 
       {/* Results */}
       {result && (
-        <div className="mt-5 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-          <h2 className="font-semibold text-slate-700 mb-3">Results — {result.submitted} file(s)</h2>
+        <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Results — {result.submitted} file(s)</h2>
           <ul className="space-y-2">
             {result.results.map((r, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
                 {r.status === "queued" ? (
                   <CheckCircle size={16} className="text-emerald-500 mt-0.5 shrink-0" />
                 ) : (
-                  <XCircle size={16} className="text-slate-400 mt-0.5 shrink-0" />
+                  <XCircle size={16} className="text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />
                 )}
                 <div>
-                  <span className="font-medium text-slate-700">{r.filename}</span>
-                  <span className={clsx("ml-2 text-xs", r.status === "queued" ? "text-emerald-600" : "text-slate-400")}>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">{r.filename}</span>
+                  <span className={clsx("ml-2 text-xs", r.status === "queued" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500")}>
                     {r.status}
                     {r.reason ? ` (${r.reason})` : ""}
                   </span>
                   {r.job_id && (
-                    <span className="ml-2 text-xs text-slate-400 font-mono">job: {r.job_id.slice(0, 8)}</span>
+                    <span className="ml-2 text-xs text-slate-400 dark:text-slate-500 font-mono">job: {r.job_id.slice(0, 8)}</span>
                   )}
                 </div>
               </li>
@@ -197,9 +202,9 @@ export default function IngestPage() {
       )}
 
       {folderResult && (
-        <div className="mt-5 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-          <h2 className="font-semibold text-slate-700 mb-2">Folder Scan Result</h2>
-          <pre className="text-xs text-slate-600 overflow-auto bg-slate-50 rounded p-3">
+        <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-2">Folder Scan Result</h2>
+          <pre className="text-xs text-slate-600 dark:text-slate-300 overflow-auto bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
             {JSON.stringify(folderResult, null, 2)}
           </pre>
         </div>

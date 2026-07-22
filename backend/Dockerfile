@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# --default-timeout/--retries: the torch CPU wheel is ~180MB and pip's default
+# read timeout (15s) can trip on slow/flaky connections mid-download.
+RUN pip install --no-cache-dir --default-timeout=180 --retries 10 -r requirements.txt
 
 COPY . .
 

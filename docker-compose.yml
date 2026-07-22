@@ -20,10 +20,12 @@ services:
       - "8000:8000"
     volumes:
       - ./pics:/app/pics
+      - ./shared:/app/shared
     env_file:
       - .env
     environment:
       - PICS_DIR=/app/pics
+      - SHARED_STORAGE_DIR=/app/shared
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@db:5432/product_search
       - LLM_PROVIDER=xai
     depends_on:

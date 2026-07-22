@@ -50,7 +50,7 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
     <DemoModeContext.Provider value={{ isBackendUp }}>
       <div className="flex flex-col h-screen overflow-hidden">
         {isBackendUp === false && (
-          <div className="flex items-center gap-2 bg-amber-500 text-amber-950 text-sm font-medium px-4 py-2 shrink-0">
+          <div className="flex items-center gap-2 bg-amber-500 dark:bg-amber-600 text-amber-950 dark:text-amber-50 text-sm font-medium px-4 py-2 shrink-0">
             <AlertTriangle size={16} />
             Demo Mode — backend not running. Showing sample data.
           </div>

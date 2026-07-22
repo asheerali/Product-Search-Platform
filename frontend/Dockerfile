@@ -1,7 +1,11 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+# npm ci requires the lock file to list every platform's optional deps
+# (sharp's native/wasm fallback packages differ by OS/libc); the lock file
+# here was generated on Windows, so use npm install to let it resolve
+# Linux/musl-specific optional deps instead of failing on a strict match.
+RUN npm install
 
 FROM node:20-alpine AS builder
 WORKDIR /app

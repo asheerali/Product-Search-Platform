@@ -83,19 +83,16 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-1">Products</h1>
-      <p className="text-slate-500 text-sm mb-6">Browse all extracted and normalized product records.</p>
-
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6 items-center">
         <input
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 w-48"
+          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 w-48 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="Search by name…"
           value={title}
           onChange={(e) => { setTitle(e.target.value); setPage(1); }}
         />
         <select
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500"
           value={category}
           onChange={(e) => { setCategory(e.target.value); setPage(1); }}
         >
@@ -104,7 +101,7 @@ export default function ProductsPage() {
           ))}
         </select>
         <input
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 w-48"
+          className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 dark:focus:ring-sky-500 w-48 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           placeholder="Filter by supplier…"
           value={supplier}
           onChange={(e) => { setSupplier(e.target.value); setPage(1); }}
@@ -112,13 +109,13 @@ export default function ProductsPage() {
         {(title || category || supplier) && (
           <button
             onClick={handleDeleteFiltered}
-            className="flex items-center gap-2 text-sm text-red-600 border border-red-200 rounded-lg px-3 py-2 hover:bg-red-50"
+            className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-xl px-3 py-2 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
           >
             <Trash2 size={14} /> Delete all matching
           </button>
         )}
         {data && (
-          <span className="ml-auto text-sm text-slate-500 self-center">
+          <span className="ml-auto text-sm text-slate-500 dark:text-slate-400 self-center">
             {data.total} product(s)
           </span>
         )}
@@ -128,7 +125,7 @@ export default function ProductsPage() {
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-slate-100 h-64 animate-pulse" />
+            <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 h-64 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -137,7 +134,7 @@ export default function ProductsPage() {
             <ProductCard key={p.id} product={p} onDelete={handleDelete} onZoom={setZoomProduct} />
           ))}
           {data?.items.length === 0 && (
-            <div className="col-span-4 py-20 text-center text-slate-400">
+            <div className="col-span-4 py-20 text-center text-slate-400 dark:text-slate-500">
               <Package size={40} className="mx-auto mb-3 opacity-30" />
               No products found. Try ingesting catalog files first.
             </div>
@@ -151,15 +148,15 @@ export default function ProductsPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="p-2 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50"
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm text-slate-600">Page {page} / {totalPages}</span>
+          <span className="text-sm text-slate-600 dark:text-slate-400">Page {page} / {totalPages}</span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="p-2 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50"
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             <ChevronRight size={16} />
           </button>
@@ -182,17 +179,17 @@ function ProductCard({
 }) {
   const imgSrc = product.image_urls[0] ? resolveImageUrl(product.image_urls[0]) : null;
   return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group relative">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm overflow-hidden hover:shadow-lg transition-shadow group relative">
       <button
         onClick={() => onDelete(product)}
         title="Delete product"
-        className="absolute top-2 right-2 z-10 bg-white/90 rounded-lg p-1.5 text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+        className="absolute top-2 right-2 z-10 bg-white/90 dark:bg-slate-800/90 rounded-lg p-1.5 text-slate-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
       >
         <Trash2 size={14} />
       </button>
       <div
         onClick={() => imgSrc && onZoom(product)}
-        className={`h-40 bg-slate-100 flex items-center justify-center overflow-hidden relative ${imgSrc ? "cursor-zoom-in" : ""}`}
+        className={`h-40 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden relative ${imgSrc ? "cursor-zoom-in" : ""}`}
       >
         {imgSrc ? (
           <>
@@ -202,28 +199,28 @@ function ProductCard({
             </div>
           </>
         ) : (
-          <ImageIcon className="text-slate-300" size={36} />
+          <ImageIcon className="text-slate-300 dark:text-slate-600" size={36} />
         )}
       </div>
       <div className="p-3">
-        <Link href={`/products/${product.id}`} className="font-medium text-slate-800 text-sm truncate hover:text-sky-600 hover:underline block">
+        <Link href={`/products/${product.id}`} className="font-medium text-slate-800 dark:text-slate-100 text-sm truncate hover:text-sky-600 dark:hover:text-sky-400 hover:underline block">
           {product.title ?? "Untitled"}
         </Link>
         {product.category && (
-          <span className="inline-block bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded mt-1">
+          <span className="inline-block bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded mt-1">
             {product.category}
           </span>
         )}
         <div className="flex justify-between items-center mt-2">
-          <span className="text-xs text-slate-400 truncate">{product.supplier_name ?? "—"}</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500 truncate">{product.supplier_name ?? "—"}</span>
           {product.price != null && (
-            <span className="text-sm font-semibold text-sky-600">
+            <span className="text-sm font-semibold text-sky-600 dark:text-sky-400">
               {product.currency} {product.price.toLocaleString()}
             </span>
           )}
         </div>
         {product.material && (
-          <p className="text-xs text-slate-400 mt-1 truncate">Material: {product.material}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 truncate">Material: {product.material}</p>
         )}
       </div>
     </div>
