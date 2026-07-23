@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     # xAI
     XAI_API_KEY: str | None = None
     XAI_BASE_URL: str = "https://api.x.ai/v1"
-    XAI_TEXT_MODEL: str = "grok-3-latest"
-    XAI_VISION_MODEL: str = "grok-2-vision-latest"
+    XAI_TEXT_MODEL: str = "grok-4.3"
+    XAI_VISION_MODEL: str = "grok-4.3"
 
     # OpenAI
     OPENAI_API_KEY: str | None = None
