@@ -1,11 +1,10 @@
 "use client";
-import type { IngestResult } from "@/lib/api";
-import { ingestFiles, resolveImageUrl } from "@/lib/api";
+import type { StorageUploadResult } from "@/lib/api";
+import { uploadToStorage } from "@/lib/api";
 import { useDemoMode } from "@/components/DemoModeProvider";
-import { DEMO_PRODUCT } from "@/lib/demoData";
-import { simulateDemoUpload } from "@/lib/demoUpload";
+import { simulateDemoStorageUpload } from "@/lib/demoUpload";
 import clsx from "clsx";
-import { ArrowRight, CheckCircle2, Inbox, Loader2, Package, Sparkles, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Database, Inbox, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -13,10 +12,8 @@ import toast from "react-hot-toast";
 
 export default function UploadPage() {
   const { isBackendUp } = useDemoMode();
-  const [supplierName, setSupplierName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<IngestResult | null>(null);
-  const [isDemoResult, setIsDemoResult] = useState(false);
+  const [result, setResult] = useState<StorageUploadResult | null>(null);
   const [done, setDone] = useState(false);
 
   const onDrop = useCallback(
@@ -26,28 +23,19 @@ export default function UploadPage() {
       setResult(null);
       setDone(false);
       try {
-        if (isBackendUp === false) {
-          const res = await simulateDemoUpload(accepted);
-          setResult(res);
-          setIsDemoResult(true);
-          setDone(true);
-          toast.success("Demo: simulated extraction complete.");
-        } else {
-          const res = await ingestFiles(accepted, supplierName || undefined);
-          setResult(res);
-          setIsDemoResult(false);
-          setDone(true);
-          const queued = res.results.filter((r) => r.status === "queued").length;
-          const skipped = res.results.filter((r) => r.status === "skipped").length;
-          toast.success(`Queued ${queued} file(s). ${skipped} skipped.`);
-        }
+        const res = isBackendUp === false
+          ? await simulateDemoStorageUpload(accepted)
+          : await uploadToStorage(accepted);
+        setResult(res);
+        setDone(true);
+        toast.success(`Uploaded ${res.submitted} file(s) to storage.`);
       } catch (e: unknown) {
         toast.error(String(e));
       } finally {
         setLoading(false);
       }
     },
-    [supplierName, isBackendUp]
+    [isBackendUp]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -67,20 +55,10 @@ export default function UploadPage() {
     <div className="max-w-3xl mx-auto">
       <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
         Bring every source into one place — PDFs, PPT decks, spreadsheets, emails, and WhatsApp
-        screenshots — instead of leaving them scattered across inboxes and chats. Everything you
-        drop here is stored together and run through the same extraction pipeline.
+        screenshots — instead of leaving them scattered across inboxes and chats. Files dropped
+        here are archived straight to S3 storage; nothing is parsed or extracted. To run the
+        extraction pipeline, use the <Link href="/ingest" className="text-sky-600 dark:text-sky-400 hover:underline">Ingest</Link> tab instead.
       </p>
-
-      {/* Supplier name */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 mb-4">
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Supplier Name (optional)</label>
-        <input
-          className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-sky-400/20 focus:border-sky-400 dark:focus:border-sky-500 transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500"
-          placeholder="e.g. U2 Living, Comfortlands…"
-          value={supplierName}
-          onChange={(e) => setSupplierName(e.target.value)}
-        />
-      </div>
 
       {/* Drop zone */}
       <div
@@ -103,82 +81,33 @@ export default function UploadPage() {
         {loading && (
           <div className="flex flex-col items-center gap-2 mt-4 text-sky-600 dark:text-sky-400">
             <Loader2 className="animate-spin" size={24} />
-            <span className="text-xs">
-              {isBackendUp === false ? "Simulating extraction…" : "Uploading & queuing…"}
-            </span>
+            <span className="text-xs">Uploading to storage…</span>
           </div>
         )}
       </div>
 
       {/* Results */}
-      {result && isDemoResult && (
-        <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={20} className="text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <p className="font-medium text-slate-800 dark:text-slate-100">Document uploaded successfully</p>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Extraction complete — see the demo result below.</p>
-          </div>
-        </div>
-      )}
-
-      {result && !isDemoResult && (
+      {result && (
         <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5">
-          <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Results — {result.submitted} file(s)</h2>
+          <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">Uploaded — {result.submitted} file(s)</h2>
           <ul className="space-y-2">
             {result.results.map((r, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
-                {r.status === "queued" ? (
-                  <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
-                ) : (
-                  <XCircle size={16} className="text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />
-                )}
-                <div>
-                  <span className="font-medium text-slate-700 dark:text-slate-200">{r.filename}</span>
-                  <span className={clsx("ml-2 text-xs", r.status === "queued" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500")}>
-                    {r.status}
-                    {r.reason ? ` (${r.reason})` : ""}
-                  </span>
-                </div>
+                <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+                <span className="font-medium text-slate-700 dark:text-slate-200">{r.filename}</span>
+                <span className="ml-auto text-xs text-emerald-600 dark:text-emerald-400">{r.status}</span>
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Demo extracted product */}
-      {isDemoResult && done && (
-        <div className="mt-5 bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-5">
-          <h2 className="font-semibold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-            <Sparkles size={16} className="text-sky-500 dark:text-sky-400" /> Extracted product (demo)
-          </h2>
-          <div className="flex gap-4">
-            <img
-              src={resolveImageUrl(DEMO_PRODUCT.image_urls[0])}
-              alt={DEMO_PRODUCT.title ?? ""}
-              className="w-28 h-28 object-cover rounded-xl ring-1 ring-black/5 dark:ring-white/10 shrink-0"
-            />
-            <div className="min-w-0">
-              <h3 className="font-medium text-slate-800 dark:text-slate-100">{DEMO_PRODUCT.title}</h3>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                {[DEMO_PRODUCT.category, DEMO_PRODUCT.material, DEMO_PRODUCT.color].filter(Boolean).join(" · ")}
-              </p>
-              <p className="text-sky-600 dark:text-sky-400 font-semibold mt-1">
-                {DEMO_PRODUCT.currency} {DEMO_PRODUCT.price?.toLocaleString()}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{DEMO_PRODUCT.description}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {done && (
         <Link
-          href="/products"
+          href="/storage"
           className="mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-5 py-3 rounded-xl text-sm font-medium shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
         >
-          <Package size={16} /> Go to Products <ArrowRight size={16} />
+          <Database size={16} /> Go to Storage Files <ArrowRight size={16} />
         </Link>
       )}
     </div>

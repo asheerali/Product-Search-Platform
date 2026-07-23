@@ -1,4 +1,4 @@
-import type { IngestionJob, Product, ProcessedFile, ProductListResponse, SearchResponse, SearchResultItem } from "@/lib/api";
+import type { IngestionJob, Product, ProcessedFile, ProductListResponse, SearchResponse, SearchResultItem, StorageFile } from "@/lib/api";
 
 // Canned data shown across the app when the backend is unreachable, so the
 // site stays browsable and the upload flow has something to demonstrate.
@@ -112,6 +112,15 @@ export const DEMO_PROCESSED_FILES: ProcessedFile[] = [
     file_type: "pdf",
     status: "done",
     supplier_name: DEMO_PRODUCT.supplier_name,
+  },
+];
+
+export const DEMO_STORAGE_FILES: StorageFile[] = [
+  {
+    key: "all-data/a1b2c3d4_CFL-S2172-catalog-sheet.pdf",
+    filename: "CFL-S2172-catalog-sheet.pdf",
+    size: 482_000,
+    last_modified: new Date().toISOString(),
   },
 ];
 

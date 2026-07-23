@@ -18,12 +18,17 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/upload", label: "Data Upload", icon: Inbox },
-  { href: "/storage", label: "Storage Files", icon: Database },
   { href: "/ingest", label: "Ingest", icon: Upload },
   { href: "/search", label: "Search", icon: Search },
   { href: "/products", label: "Products", icon: Package },
   { href: "/jobs", label: "Jobs", icon: ClipboardList },
+];
+
+// Kept visually separate from the main pipeline nav: these two are a plain
+// S3 archive (upload + browse), not part of the AI ingestion flow above.
+const storageNavItems = [
+  { href: "/upload", label: "Data Upload", icon: Inbox },
+  { href: "/storage", label: "Storage Files", icon: Database },
 ];
 
 const STORAGE_KEY = "sidebarCollapsed";
@@ -114,6 +119,36 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="px-2.5 pb-2">
+        {!collapsed && (
+          <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+            Storage
+          </p>
+        )}
+        <div className="space-y-1">
+          {storageNavItems.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={collapsed ? label : undefined}
+                className={clsx(
+                  "group flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150",
+                  collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5",
+                  active
+                    ? "bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-950/50"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white hover:translate-x-0.5"
+                )}
+              >
+                <Icon size={18} className={clsx("shrink-0 transition-transform", active && "drop-shadow")} />
+                {!collapsed && label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
 
       {!collapsed && (
         <div className="px-4 py-4 mx-3 mb-3 rounded-xl bg-white/[0.03] text-slate-500 text-[10.5px] leading-relaxed">

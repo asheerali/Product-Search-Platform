@@ -131,6 +131,43 @@ export async function ingestFiles(files: File[], supplierName?: string): Promise
   return res.data;
 }
 
+export interface StorageFile {
+  key: string;
+  filename: string;
+  size: number;
+  last_modified: string;
+}
+
+export interface StorageUploadResultItem {
+  filename: string;
+  s3_uri: string;
+  status: string;
+}
+
+export interface StorageUploadResult {
+  submitted: number;
+  results: StorageUploadResultItem[];
+}
+
+export async function uploadToStorage(files: File[]): Promise<StorageUploadResult> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  const res = await client.post<StorageUploadResult>("/storage/upload", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+}
+
+export async function getStorageFiles(): Promise<StorageFile[]> {
+  const res = await client.get<StorageFile[]>("/storage/files");
+  return res.data;
+}
+
+export async function deleteStorageFile(key: string): Promise<{ deleted: boolean }> {
+  const res = await client.delete("/storage/files", { params: { key } });
+  return res.data;
+}
+
 export async function ingestFolder(
   folderPath: string,
   supplierName?: string,

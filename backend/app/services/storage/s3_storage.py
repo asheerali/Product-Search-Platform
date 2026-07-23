@@ -27,3 +27,26 @@ def upload_original(local_path: str, filename: str) -> str:
     key = f"{settings.S3_PREFIX}{filename}"
     _s3_client().upload_file(local_path, settings.S3_BUCKET, key)
     return f"s3://{settings.S3_BUCKET}/{key}"
+
+
+def upload_fileobj(fileobj, filename: str) -> str:
+    """Stream a file-like object straight to S3 (no local disk copy needed)."""
+    key = f"{settings.S3_PREFIX}{filename}"
+    _s3_client().upload_fileobj(fileobj, settings.S3_BUCKET, key)
+    return f"s3://{settings.S3_BUCKET}/{key}"
+
+
+def list_objects() -> list[dict]:
+    """List every object under the configured S3 prefix."""
+    paginator = _s3_client().get_paginator("list_objects_v2")
+    objects = []
+    for page in paginator.paginate(Bucket=settings.S3_BUCKET, Prefix=settings.S3_PREFIX):
+        for obj in page.get("Contents", []):
+            if obj["Key"] == settings.S3_PREFIX:
+                continue  # the prefix "folder" placeholder itself, not a real file
+            objects.append(obj)
+    return objects
+
+
+def delete_object(key: str):
+    _s3_client().delete_object(Bucket=settings.S3_BUCKET, Key=key)
