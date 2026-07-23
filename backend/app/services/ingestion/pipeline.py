@@ -191,6 +191,21 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
             except Exception as e:
                 logger.warning("Image product extraction failed: %s", e)
 
+        # Fallback: PDFs/PPTX/XLSX/emails can carry the actual product data as
+        # a picture (e.g. a screenshotted spec sheet) rather than native
+        # text/tables — in that case text extraction legitimately finds
+        # nothing. Run vision analysis on the extracted images before giving
+        # up, same as a direct image upload would get.
+        if doc.file_type != "image" and not products_data and saved_assets:
+            for asset in saved_assets:
+                try:
+                    image_products = _analyzer.extract_from_image(
+                        asset.local_path, supplier_name=doc.supplier_name or ""
+                    )
+                    products_data.extend(image_products)
+                except Exception as e:
+                    logger.warning("Fallback image product extraction failed for asset %s: %s", asset.id, e)
+
         # ------------------------------------------------------------------ #
         # STAGE 4: Persist products
         # ------------------------------------------------------------------ #

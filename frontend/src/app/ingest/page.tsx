@@ -4,7 +4,7 @@ import { ingestFiles, ingestFolder } from "@/lib/api";
 import { useDemoMode } from "@/components/DemoModeProvider";
 import { simulateDemoUpload } from "@/lib/demoUpload";
 import clsx from "clsx";
-import { AlertCircle, ArrowRight, CheckCircle, CheckCircle2, Folder, Loader2, Package, Upload, XCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle, CheckCircle2, ClipboardList, Folder, Loader2, Upload, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -236,10 +236,10 @@ export default function IngestPage() {
 
       {done && (
         <Link
-          href="/products"
+          href="/jobs"
           className="mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-5 py-3 rounded-xl text-sm font-medium shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all"
         >
-          <Package size={16} /> Go to Products <ArrowRight size={16} />
+          <ClipboardList size={16} /> Go to Jobs <ArrowRight size={16} />
         </Link>
       )}
     </div>
