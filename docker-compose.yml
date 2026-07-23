@@ -28,7 +28,7 @@ services:
       - SHARED_STORAGE_DIR=/app/shared
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@db:5432/product_search
       - LLM_PROVIDER=xai
-      - FRONTEND_ORIGIN=http://13.63.171.218:3000
+      - FRONTEND_ORIGIN=http://${PUBLIC_HOST:-localhost}:3000
     depends_on:
       - db
 
@@ -39,7 +39,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://13.63.171.218:8000
+      - NEXT_PUBLIC_API_URL=http://${PUBLIC_HOST:-localhost}:8000
     depends_on:
       - backend
 
