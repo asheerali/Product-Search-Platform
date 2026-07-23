@@ -20,6 +20,7 @@ from app.schemas.document import (
 )
 from app.services.ai.embeddings import vector_store
 from app.services.ingestion.deduplication import compute_file_hash
+from app.services.storage import s3_storage
 from app.workers.ingestion_worker import enqueue_document
 
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
@@ -52,10 +53,17 @@ def _register_and_enqueue(
     supplier_name: str | None,
     db: Session,
     background_tasks: BackgroundTasks,
+    original_path: str | None = None,
+    cleanup_after: bool = False,
 ) -> dict:
     """
     Hash the file, check for duplicates, create Document + Job rows, and
     enqueue the background processing task. Returns a status dict.
+
+    file_path is where the pipeline reads the file from (must be local).
+    original_path is what's recorded as the document's source of truth
+    (defaults to file_path) — pass an s3:// URI when file_path is just a
+    local temp copy of a file already archived elsewhere.
     """
     content_hash = compute_file_hash(file_path)
 
@@ -77,7 +85,7 @@ def _register_and_enqueue(
 
     doc = Document(
         filename=filename,
-        original_path=file_path,
+        original_path=original_path or file_path,
         file_type=file_type,
         file_size=file_size,
         content_hash=content_hash,
@@ -99,7 +107,7 @@ def _register_and_enqueue(
     db.add(pf)
     db.commit()
 
-    background_tasks.add_task(enqueue_document, doc.id, file_path, job.id)
+    background_tasks.add_task(enqueue_document, doc.id, file_path, job.id, cleanup_after)
 
     return {"filename": filename, "status": "queued", "document_id": doc.id, "job_id": job.id}
 
@@ -116,9 +124,10 @@ async def ingest_file(
 ):
     """Accept file uploads and queue them for ingestion."""
     results = []
-    # Stand-in for S3 in this demo — every uploaded original persists here,
-    # consolidating files that would otherwise be scattered across inboxes/chats.
-    storage_dir = Path(settings.SHARED_STORAGE_DIR)
+    # Every uploaded original is archived to S3; the local copy is just a
+    # working file for the pipeline to parse and is deleted once processed.
+    temp_dir = Path(settings.UPLOAD_TEMP_DIR)
+    temp_dir.mkdir(parents=True, exist_ok=True)
 
     for upload in files:
         ext = Path(upload.filename).suffix.lower()
@@ -126,22 +135,25 @@ async def ingest_file(
             results.append({"filename": upload.filename, "status": "skipped", "reason": "unsupported_type"})
             continue
 
-        # Save to shared storage, prefixed to avoid collisions between suppliers
-        # uploading same-named files.
-        stored_path = storage_dir / f"{uuid.uuid4().hex[:8]}_{upload.filename}"
-        with open(stored_path, "wb") as f:
+        # Prefixed to avoid collisions between suppliers uploading same-named files.
+        temp_path = temp_dir / f"{uuid.uuid4().hex[:8]}_{upload.filename}"
+        with open(temp_path, "wb") as f:
             shutil.copyfileobj(upload.file, f)
 
+        s3_uri = s3_storage.upload_original(str(temp_path), temp_path.name)
+
         result = _register_and_enqueue(
-            file_path=str(stored_path),
+            file_path=str(temp_path),
             filename=upload.filename,
             supplier_name=supplier_name,
             db=db,
             background_tasks=background_tasks,
+            original_path=s3_uri,
+            cleanup_after=True,
         )
         if result.get("status") == "skipped":
-            # Duplicate/unsupported — don't leave a copy sitting in shared storage.
-            stored_path.unlink(missing_ok=True)
+            # Duplicate/unsupported — already archived to S3, just drop the local temp copy.
+            temp_path.unlink(missing_ok=True)
         results.append(result)
 
     return {"submitted": len(results), "results": results}

@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     # ---- CORS ----
     FRONTEND_ORIGIN: str = "http://localhost:3000"
 
+    # ---- S3 storage (raw uploaded originals) ----
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_DEFAULT_REGION: str | None = None
+    S3_BUCKET: str | None = None
+    S3_PREFIX: str = ""
+
     class Config:
         env_file = str(Path(__file__).resolve().parents[3] / ".env")
         extra = "ignore"
