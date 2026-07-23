@@ -4,11 +4,15 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:800
 
 const client = axios.create({ baseURL: `${API_BASE}/api/v1` });
 
-// Real product/image URLs come back from the backend as paths relative to
-// API_BASE. Demo-mode images are static Next.js public assets (served from
-// the frontend origin itself), so they must NOT be prefixed with API_BASE.
+// Product images are either a full S3 URL (already absolute — stored directly
+// in the DB) or a path relative to API_BASE (local /files/pics/... fallback).
+// Demo-mode images are static Next.js public assets served from the frontend
+// origin itself, so they must NOT be prefixed with API_BASE either.
 export function resolveImageUrl(url: string): string {
-  return url.startsWith("/demo/") ? url : `${API_BASE}${url}`;
+  if (url.startsWith("/demo/") || url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  return `${API_BASE}${url}`;
 }
 
 export interface IngestionJob {

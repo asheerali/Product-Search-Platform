@@ -50,3 +50,17 @@ def list_objects() -> list[dict]:
 
 def delete_object(key: str):
     _s3_client().delete_object(Bucket=settings.S3_BUCKET, Key=key)
+
+
+PRODUCT_PHOTOS_PREFIX = "products_photos/"
+
+
+def upload_product_photo(local_path: str, filename: str) -> str:
+    """
+    Upload an extracted product image to S3 under products_photos/ and return
+    its public URL. That prefix (only) is bucket-policy public-read, so the
+    URL can be stored in the DB and used directly as an <img> src.
+    """
+    key = f"{PRODUCT_PHOTOS_PREFIX}{filename}"
+    _s3_client().upload_file(local_path, settings.S3_BUCKET, key)
+    return f"https://{settings.S3_BUCKET}.s3.{settings.AWS_DEFAULT_REGION}.amazonaws.com/{key}"

@@ -22,6 +22,7 @@ from app.services.ingestion.image_extractor import (
 from app.services.ingestion.pdf_parser import parse_pdf
 from app.services.ingestion.pptx_parser import parse_pptx
 from app.services.ingestion.xlsx_parser import parse_xlsx
+from app.services.storage import s3_storage
 
 logger = logging.getLogger(__name__)
 
@@ -147,11 +148,21 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
                 assets_by_hash[sha256] = existing_asset
                 saved_assets.append(existing_asset)
                 continue
+            s3_url = None
+            try:
+                # Keyed by content hash (not the local filename) so the same
+                # image reused across documents maps to one stable S3 object.
+                s3_filename = f"{sha256[:16]}{Path(img_path).suffix}"
+                s3_url = s3_storage.upload_product_photo(img_path, s3_filename)
+            except Exception as e:
+                logger.warning("Product photo S3 upload failed for %s: %s", img_path, e)
+
             asset = MediaAsset(
                 document_id=document_id,
                 source_type=doc.file_type,
                 source_ref=Path(img_path).stem,
                 local_path=img_path,
+                s3_url=s3_url,
                 filename=Path(img_path).name,
                 sha256=sha256,
                 phash=meta.get("phash"),

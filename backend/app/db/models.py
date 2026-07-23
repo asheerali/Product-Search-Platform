@@ -131,6 +131,7 @@ class MediaAsset(Base):
     source_type = Column(String)   # pdf | pptx | xlsx | upload
     source_ref = Column(String)    # e.g. "page_3", "slide_5", "sheet_Catalogue"
     local_path = Column(String)    # absolute path inside pics/
+    s3_url = Column(String)        # public URL under s3://.../products_photos/, if uploaded
     filename = Column(String)
     sha256 = Column(String, unique=True, index=True)
     phash = Column(String, index=True)  # perceptual hash for near-duplicate detection

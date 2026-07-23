@@ -45,5 +45,6 @@ class MediaAssetOut(BaseModel):
     height: Optional[int]
     mime_type: Optional[str]
     local_path: Optional[str]
+    s3_url: Optional[str]
 
     model_config = {"from_attributes": True}

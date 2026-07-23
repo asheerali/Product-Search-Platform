@@ -140,7 +140,7 @@ async def ingest_file(
         with open(temp_path, "wb") as f:
             shutil.copyfileobj(upload.file, f)
 
-        s3_uri = s3_storage.upload_original(str(temp_path), temp_path.name)
+        s3_uri = s3_storage.upload_original(str(temp_path), upload.filename)
 
         result = _register_and_enqueue(
             file_path=str(temp_path),

@@ -17,11 +17,13 @@ _ranker = HybridRanker()
 
 
 def _build_image_urls(product: Product) -> list[str]:
-    return [
-        f"/api/v1/files/pics/{pi.media_asset.document_id}/{pi.media_asset.filename}"
-        for pi in product.images
-        if pi.media_asset
-    ]
+    urls = []
+    for pi in product.images:
+        asset = pi.media_asset
+        if not asset:
+            continue
+        urls.append(asset.s3_url or f"/api/v1/files/pics/{asset.document_id}/{asset.filename}")
+    return urls
 
 
 @router.get("", response_model=ProductListResponse)
