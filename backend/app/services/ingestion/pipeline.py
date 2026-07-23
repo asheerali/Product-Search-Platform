@@ -128,12 +128,23 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
         # STAGE 2: Save media assets
         # ------------------------------------------------------------------ #
         saved_assets: list[MediaAsset] = []
+        assets_by_hash: dict[str, MediaAsset] = {}
         for img_path in all_image_paths:
             meta = get_image_metadata(img_path)
-            if not meta.get("sha256"):
+            sha256 = meta.get("sha256")
+            if not sha256:
                 continue
-            existing_asset = db.query(MediaAsset).filter_by(sha256=meta["sha256"]).first()
+            # A single document (e.g. a PPTX with a repeated logo/background
+            # across slides) can yield the same image more than once — dedupe
+            # within this batch too, not just against already-committed rows,
+            # since autoflush=False means pending inserts here aren't visible
+            # to the query below until commit.
+            if sha256 in assets_by_hash:
+                saved_assets.append(assets_by_hash[sha256])
+                continue
+            existing_asset = db.query(MediaAsset).filter_by(sha256=sha256).first()
             if existing_asset:
+                assets_by_hash[sha256] = existing_asset
                 saved_assets.append(existing_asset)
                 continue
             asset = MediaAsset(
@@ -142,13 +153,14 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
                 source_ref=Path(img_path).stem,
                 local_path=img_path,
                 filename=Path(img_path).name,
-                sha256=meta.get("sha256"),
+                sha256=sha256,
                 phash=meta.get("phash"),
                 width=meta.get("width"),
                 height=meta.get("height"),
                 mime_type=meta.get("mime_type"),
             )
             db.add(asset)
+            assets_by_hash[sha256] = asset
             saved_assets.append(asset)
         db.commit()
 
@@ -268,6 +280,11 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
     except Exception as e:
         logger.exception("Pipeline failed for document %s: %s", document_id, e)
         try:
+            # A failed commit (e.g. the IntegrityError above) leaves the
+            # session unusable until rolled back — without this, the query
+            # below raises PendingRollbackError, which the bare except
+            # swallows, silently leaving the job stuck at "running" forever.
+            db.rollback()
             doc = db.query(Document).filter_by(id=document_id).first()
             if doc:
                 doc.status = "error"

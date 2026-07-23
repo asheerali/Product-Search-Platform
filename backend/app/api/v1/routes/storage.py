@@ -3,7 +3,6 @@ Storage routes — plain S3 archive, decoupled from the AI ingestion pipeline.
 Uploading here only puts the file in S3; it does not parse it, extract
 products, or create Document/Job/ProcessedFile rows. Use /ingest/file for that.
 """
-import uuid
 from pathlib import Path
 from typing import List
 
@@ -16,11 +15,14 @@ router = APIRouter(prefix="/storage", tags=["Storage"])
 
 @router.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
-    """Upload one or more files directly to S3. No processing is triggered."""
+    """
+    Upload one or more files directly to S3, keyed by their original filename.
+    No processing is triggered. Re-uploading the same filename overwrites the
+    existing object rather than creating a duplicate.
+    """
     results = []
     for upload in files:
-        key_name = f"{uuid.uuid4().hex[:8]}_{upload.filename}"
-        s3_uri = s3_storage.upload_fileobj(upload.file, key_name)
+        s3_uri = s3_storage.upload_fileobj(upload.file, upload.filename)
         results.append({"filename": upload.filename, "s3_uri": s3_uri, "status": "uploaded"})
     return {"submitted": len(results), "results": results}
 
