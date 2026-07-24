@@ -35,6 +35,21 @@ _image_embed = ImageEmbeddingService()
 MIN_CONTENT_IMAGE_AREA = 40_000
 
 
+def _order_photos(candidates: list[MediaAsset]) -> list[MediaAsset]:
+    """
+    Order candidate images for a product's photo gallery, best first.
+    Furniture front-view shots are essentially always landscape (wider than
+    tall); a portrait-oriented image is almost always a detail/angle crop —
+    so landscape shots rank first, then largest first within each group.
+    """
+    def sort_key(a: MediaAsset):
+        is_portrait = (a.width or 0) < (a.height or 0)
+        area = (a.width or 0) * (a.height or 0)
+        return (is_portrait, -area)
+
+    return sorted(candidates, key=sort_key)
+
+
 def _update_job(job_id: str, db: Session, stage: str, status: str, progress: int = 0, error: str | None = None):
     job = db.query(IngestionJob).filter_by(id=job_id).first()
     if job:
@@ -253,21 +268,17 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
                     continue
 
                 # If the winning data came from a multi-variant spec-sheet
-                # screenshot, show an actual photo instead of that screenshot
-                # — the largest OTHER image on the slide. If it came from a
-                # plain single-product photo, that photo IS the hero.
-                hero_candidates = content_assets
+                # screenshot, the gallery is every OTHER photo on the slide —
+                # the screenshot itself is data, not a product photo. If it
+                # came from a plain single-product photo, that photo IS it.
+                photo_candidates = content_assets
                 if data_source_asset is not None and len(slide_products) > 1:
-                    hero_candidates = [a for a in content_assets if a is not data_source_asset] or content_assets
-                slide_hero = (
-                    max(hero_candidates, key=lambda a: (a.width or 0) * (a.height or 0))
-                    if hero_candidates
-                    else None
-                )
+                    photo_candidates = [a for a in content_assets if a is not data_source_asset] or content_assets
+                slide_photos = _order_photos(photo_candidates)
 
                 products_data.extend(slide_products)
                 for pdata in slide_products:
-                    created_products.append(_persist_product(pdata, document_id, doc, slide_hero, db))
+                    created_products.append(_persist_product(pdata, document_id, doc, slide_photos, db))
 
         else:
             if raw_text.strip():
@@ -313,16 +324,12 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
                 products_data = best_products
                 data_source_asset = best_asset
 
-            hero_candidates = content_assets
+            photo_candidates = content_assets
             if data_source_asset is not None and len(products_data) > 1:
-                hero_candidates = [a for a in content_assets if a is not data_source_asset] or content_assets
-            hero_asset = (
-                max(hero_candidates, key=lambda a: (a.width or 0) * (a.height or 0))
-                if hero_candidates
-                else None
-            )
+                photo_candidates = [a for a in content_assets if a is not data_source_asset] or content_assets
+            photo_assets = _order_photos(photo_candidates)
             for pdata in products_data:
-                created_products.append(_persist_product(pdata, document_id, doc, hero_asset, db))
+                created_products.append(_persist_product(pdata, document_id, doc, photo_assets, db))
 
         db.commit()
 
@@ -385,9 +392,9 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
 
 
 def _persist_product(
-    pdata: dict, document_id: str, doc: Document, hero_asset: MediaAsset | None, db: Session
+    pdata: dict, document_id: str, doc: Document, photo_assets: list[MediaAsset], db: Session
 ) -> Product:
-    """Create (or reuse, by supplier SKU) a Product row and link hero_asset as its photo."""
+    """Create (or reuse, by supplier SKU) a Product row and link its full photo gallery."""
     if pdata.get("supplier_sku") and doc.supplier_name:
         exists = db.query(Product).filter_by(
             supplier_name=doc.supplier_name,
@@ -417,8 +424,10 @@ def _persist_product(
     db.add(p)
     db.flush()
 
-    if hero_asset:
-        pi = ProductImage(product_id=p.id, media_asset_id=hero_asset.id, role="hero", rank=0)
+    for rank, asset in enumerate(photo_assets):
+        pi = ProductImage(
+            product_id=p.id, media_asset_id=asset.id, role="hero" if rank == 0 else "detail", rank=rank
+        )
         db.add(pi)
 
     return p

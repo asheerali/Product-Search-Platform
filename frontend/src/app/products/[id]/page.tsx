@@ -23,6 +23,11 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [similar, setSimilar] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState(0);
+
+  useEffect(() => {
+    setActiveImage(0);
+  }, [productId]);
 
   useEffect(() => {
     if (isBackendUp === null) return; // wait until we know
@@ -65,7 +70,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const imgSrc = product.image_urls[0] ? resolveImageUrl(product.image_urls[0]) : null;
+  const imgSrc = product.image_urls[activeImage] ? resolveImageUrl(product.image_urls[activeImage]) : null;
   const dims = formatDims(product);
   const rawAttrs = product.raw_attributes && Object.keys(product.raw_attributes).length > 0 ? product.raw_attributes : null;
 
@@ -76,11 +81,30 @@ export default function ProductDetailPage() {
       </Link>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-6 flex flex-col md:flex-row gap-6">
-        <div className="w-full md:w-72 h-72 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
-          {imgSrc ? (
-            <img src={imgSrc} alt={product.title ?? ""} className="w-full h-full object-cover" />
-          ) : (
-            <ImageIcon className="text-slate-300 dark:text-slate-600" size={40} />
+        <div className="w-full md:w-72 shrink-0">
+          <div className="w-full h-72 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center">
+            {imgSrc ? (
+              <img src={imgSrc} alt={product.title ?? ""} className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon className="text-slate-300 dark:text-slate-600" size={40} />
+            )}
+          </div>
+          {product.image_urls.length > 1 && (
+            <div className="flex gap-2 mt-2 overflow-x-auto">
+              {product.image_urls.map((url, i) => (
+                <button
+                  key={url + i}
+                  onClick={() => setActiveImage(i)}
+                  className={`w-14 h-14 rounded-lg overflow-hidden shrink-0 ring-2 transition-colors ${
+                    i === activeImage
+                      ? "ring-sky-500"
+                      : "ring-transparent hover:ring-slate-300 dark:hover:ring-slate-600"
+                  }`}
+                >
+                  <img src={resolveImageUrl(url)} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
