@@ -34,6 +34,40 @@ Data:
 {text}
 """
 
+PPTX_SLIDE_EXTRACTION_PROMPT = """You are a furniture product data extraction expert analyzing ONE SLIDE from a
+supplier's PPTX catalog deck. Each slide is normally one base product, but the
+slide's table may list several purchasable size/config variants of it
+(e.g. 1S/2S/3S, or "Sectional (3 Pcs)") — treat each variant as a separate product.
+
+Extract every distinct variant mentioned in this slide's text/table data:
+model number, size/description code, dimensions (CM), CBM, materials/fabric
+spec, price (USD), packaging quantity (e.g. "40HQ/Qty"), and any other
+printed attributes.
+
+For each variant return a JSON object with these fields:
+- title (string): product name, including the size/variant code (e.g. "CFL-S658 MD Foam 1S Sofa")
+- category (string): one of [sofa, chair, table, bed, wardrobe, cabinet, desk, shelf, lamp, other]
+- material (string): primary material(s)
+- style (string): design style (modern, traditional, Scandinavian, industrial, etc.)
+- color (string): primary color(s)
+- width_mm (number or null): width in mm - convert from cm (x10) or inches (x25.4) if needed
+- depth_mm (number or null): depth in mm
+- height_mm (number or null): height in mm
+- price (number or null): numeric price
+- currency (string): currency code, default "USD"
+- supplier_sku (string or null): model/product code, including the variant suffix if present
+- description (string): brief product description
+- raw_attributes (object): any other found attributes as key-value pairs (e.g. cbm, packaging_qty)
+- confidence (number): 0-1, how confident you are in this extraction
+
+Ignore any logos, watermarks, or company branding mentioned in the slide — they are not products.
+
+Return ONLY a valid JSON array, one object per variant. Return [] if no products are found on this slide. No markdown, no explanation.
+
+Slide data:
+{text}
+"""
+
 IMAGE_ANALYSIS_PROMPT = """You are an expert furniture product data analyst with strong OCR ability.
 
 This image is one of two kinds:
@@ -80,13 +114,13 @@ Return ONLY a valid JSON array. No markdown, no explanation.
 
 
 class ProductAnalyzer:
-    def extract_from_text(
+    def _extract_with_prompt(
         self,
+        prompt_template: str,
         text: str,
-        tables: list[list[dict]] | None = None,
-        supplier_name: str = "",
+        tables: list[list[dict]] | None,
+        supplier_name: str,
     ) -> list[dict]:
-        """Extract structured product records from raw text + optional tables."""
         # Combine text and table data
         combined = text
         if tables:
@@ -102,7 +136,7 @@ class ProductAnalyzer:
         if not combined.strip():
             return []
 
-        prompt = TEXT_EXTRACTION_PROMPT.format(text=combined)
+        prompt = prompt_template.format(text=combined)
         messages = [{"role": "user", "content": prompt}]
 
         try:
@@ -121,6 +155,25 @@ class ProductAnalyzer:
         except Exception as e:
             logger.error("Text product extraction error: %s", e)
             return []
+
+    def extract_from_text(
+        self,
+        text: str,
+        tables: list[list[dict]] | None = None,
+        supplier_name: str = "",
+    ) -> list[dict]:
+        """Extract structured product records from raw text + optional tables."""
+        return self._extract_with_prompt(TEXT_EXTRACTION_PROMPT, text, tables, supplier_name)
+
+    def extract_from_slide(
+        self,
+        text: str,
+        tables: list[list[dict]] | None = None,
+        supplier_name: str = "",
+    ) -> list[dict]:
+        """Same as extract_from_text but scoped to a single PPTX slide — tuned
+        for 'one base product per slide, possibly several size/config variants'."""
+        return self._extract_with_prompt(PPTX_SLIDE_EXTRACTION_PROMPT, text, tables, supplier_name)
 
     def extract_from_image(self, image_path: str, supplier_name: str = "") -> list[dict]:
         """Analyze a product image (photo or spec-sheet table) and return one or more
