@@ -30,6 +30,10 @@ _analyzer = ProductAnalyzer()
 _text_embed = TextEmbeddingService()
 _image_embed = ImageEmbeddingService()
 
+# Below this pixel area (~200x200), an extracted image is almost always a
+# corner logo/watermark rather than real product content.
+MIN_CONTENT_IMAGE_AREA = 40_000
+
 
 def _update_job(job_id: str, db: Session, stage: str, status: str, progress: int = 0, error: str | None = None):
     job = db.query(IngestionJob).filter_by(id=job_id).first()
@@ -214,27 +218,50 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
                         logger.warning("Slide %d text extraction failed: %s", slide.slide_number, e)
 
                 slide_assets = [assets_by_path[p] for p in slide.image_paths if p in assets_by_path]
+                # Tiny images (a corner brand logo/watermark) are never real
+                # product content — drop them before picking anything below.
+                content_assets = [a for a in slide_assets if (a.width or 0) * (a.height or 0) >= MIN_CONTENT_IMAGE_AREA]
 
-                # Same picture-only-slide fallback as below, scoped to this slide.
-                if not slide_products and slide_assets:
-                    for asset in slide_assets:
+                # Same picture-only-slide fallback as below, scoped to this
+                # slide — but a slide with several product photos plus one
+                # spec-sheet screenshot is still ONE product (family), not
+                # N+1. Try each image, keep only the single best result
+                # (the one that found the most variants — a strong signal it
+                # was the actual spec sheet) instead of piling up a separate
+                # guessed product from every photo on the slide.
+                data_source_asset = None
+                if not slide_products and content_assets:
+                    best_products: list[dict] = []
+                    best_asset = None
+                    for asset in content_assets:
                         try:
-                            slide_products.extend(
-                                _analyzer.extract_from_image(asset.local_path, supplier_name=doc.supplier_name or "")
+                            candidate = _analyzer.extract_from_image(
+                                asset.local_path, supplier_name=doc.supplier_name or ""
                             )
                         except Exception as e:
                             logger.warning(
                                 "Slide %d image extraction failed for asset %s: %s", slide.slide_number, asset.id, e
                             )
+                            continue
+                        if len(candidate) > len(best_products):
+                            best_products = candidate
+                            best_asset = asset
+                    slide_products = best_products
+                    data_source_asset = best_asset
 
                 if not slide_products:
                     continue
 
-                # Largest image on THIS slide — a decent proxy for "the actual
-                # product photo" vs. a small logo/watermark on the same slide.
+                # If the winning data came from a multi-variant spec-sheet
+                # screenshot, show an actual photo instead of that screenshot
+                # — the largest OTHER image on the slide. If it came from a
+                # plain single-product photo, that photo IS the hero.
+                hero_candidates = content_assets
+                if data_source_asset is not None and len(slide_products) > 1:
+                    hero_candidates = [a for a in content_assets if a is not data_source_asset] or content_assets
                 slide_hero = (
-                    max(slide_assets, key=lambda a: (a.width or 0) * (a.height or 0))
-                    if slide_assets
+                    max(hero_candidates, key=lambda a: (a.width or 0) * (a.height or 0))
+                    if hero_candidates
                     else None
                 )
 
@@ -261,23 +288,37 @@ def run_pipeline(document_id: str, file_path: str, job_id: str):
                 except Exception as e:
                     logger.warning("Image product extraction failed: %s", e)
 
+            content_assets = [a for a in saved_assets if (a.width or 0) * (a.height or 0) >= MIN_CONTENT_IMAGE_AREA]
+
             # Fallback: PDFs/XLSX/emails can carry the actual product data as
             # a picture (e.g. a screenshotted spec sheet) rather than native
             # text/tables — in that case text extraction legitimately finds
-            # nothing. Run vision analysis on the extracted images before
-            # giving up, same as a direct image upload would get.
-            if doc.file_type != "image" and not products_data and saved_assets:
-                for asset in saved_assets:
+            # nothing. Try each image but keep only the single best result
+            # (most variants found), not a separate guessed product per photo.
+            data_source_asset = None
+            if doc.file_type != "image" and not products_data and content_assets:
+                best_products: list[dict] = []
+                best_asset = None
+                for asset in content_assets:
                     try:
-                        products_data.extend(
-                            _analyzer.extract_from_image(asset.local_path, supplier_name=doc.supplier_name or "")
+                        candidate = _analyzer.extract_from_image(
+                            asset.local_path, supplier_name=doc.supplier_name or ""
                         )
                     except Exception as e:
                         logger.warning("Fallback image product extraction failed for asset %s: %s", asset.id, e)
+                        continue
+                    if len(candidate) > len(best_products):
+                        best_products = candidate
+                        best_asset = asset
+                products_data = best_products
+                data_source_asset = best_asset
 
+            hero_candidates = content_assets
+            if data_source_asset is not None and len(products_data) > 1:
+                hero_candidates = [a for a in content_assets if a is not data_source_asset] or content_assets
             hero_asset = (
-                max(saved_assets, key=lambda a: (a.width or 0) * (a.height or 0))
-                if saved_assets
+                max(hero_candidates, key=lambda a: (a.width or 0) * (a.height or 0))
+                if hero_candidates
                 else None
             )
             for pdata in products_data:
