@@ -101,6 +101,11 @@ export function Sidebar() {
       )}
 
       <nav className="flex-1 px-2.5 py-2 space-y-1">
+        {!collapsed && (
+          <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+            Scraper App
+          </p>
+        )}
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
@@ -126,7 +131,7 @@ export function Sidebar() {
       <div className="px-2.5 pb-2">
         {!collapsed && (
           <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
-            Storage
+            Storage App
           </p>
         )}
         <div className="space-y-1">
