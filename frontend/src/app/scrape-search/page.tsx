@@ -39,7 +39,7 @@ export default function ScrapeSearchPage() {
               : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 ring-1 ring-black/5 dark:ring-white/10 hover:shadow-md"
           )}
         >
-          <Upload size={16} /> Scrape Products
+          <Upload size={16} /> Extract Products
         </button>
       </div>
 

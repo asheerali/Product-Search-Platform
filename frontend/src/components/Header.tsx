@@ -8,7 +8,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview of your AI-powered product catalog." },
   "/upload": { title: "Data Upload", subtitle: "Bring every source into one place." },
   "/storage": { title: "Storage Files", subtitle: "Everything stored in the shared data folder." },
-  "/scrape-search": { title: "Scrape / Search", subtitle: "Find products by text or image, or scrape new ones in." },
+  "/scrape-search": { title: "Extract / Search", subtitle: "Find products by text or image, or extract new ones in." },
   "/products": { title: "Products", subtitle: "Browse all extracted and normalized product records." },
   "/jobs": { title: "Ingestion Jobs", subtitle: "Live status of all ingestion pipeline runs." },
 };

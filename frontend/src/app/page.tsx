@@ -72,7 +72,7 @@ export default function DashboardPage() {
   ];
 
   const quickActions = [
-    { href: "/scrape-search?tab=scrape", icon: Upload, tint: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400", title: "Scrape Products", desc: "Upload PDFs, PPTX, XLSX, emails or provide a folder path." },
+    { href: "/scrape-search?tab=scrape", icon: Upload, tint: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400", title: "Extract Products", desc: "Upload PDFs, PPTX, XLSX, emails or provide a folder path." },
     { href: "/scrape-search?tab=search", icon: Search, tint: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400", title: "Search Products", desc: "Text semantic search or upload a photo to find similar products." },
     { href: "/products", icon: Package, tint: "bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400", title: "Browse Catalog", desc: "Filter and explore all extracted product records." },
   ];

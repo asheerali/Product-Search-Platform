@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/scrape-search", label: "Scrape / Search", icon: Search },
+  { href: "/scrape-search", label: "Extract / Search", icon: Search },
   { href: "/products", label: "Products", icon: Package },
   { href: "/jobs", label: "Jobs", icon: ClipboardList },
 ];
@@ -112,10 +112,13 @@ export function Sidebar() {
         {!collapsed && (
           <button
             onClick={() => setScraperOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400 transition-colors"
+            className="w-full flex items-center justify-between px-3 pt-1 pb-2 text-xs font-bold uppercase tracking-wider text-sky-400 hover:text-sky-300 transition-colors"
           >
-            Scraper App
-            <ChevronRight size={12} className={clsx("transition-transform", scraperOpen && "rotate-90")} />
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+              Scraper App
+            </span>
+            <ChevronRight size={13} className={clsx("transition-transform", scraperOpen && "rotate-90")} />
           </button>
         )}
         {(collapsed || scraperOpen) && navItems.map(({ href, label, icon: Icon }) => {
@@ -144,10 +147,13 @@ export function Sidebar() {
         {!collapsed && (
           <button
             onClick={() => setStorageOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400 transition-colors"
+            className="w-full flex items-center justify-between px-3 pt-2 pb-2 text-xs font-bold uppercase tracking-wider text-violet-400 hover:text-violet-300 transition-colors"
           >
-            Storage App
-            <ChevronRight size={12} className={clsx("transition-transform", storageOpen && "rotate-90")} />
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+              Storage App
+            </span>
+            <ChevronRight size={13} className={clsx("transition-transform", storageOpen && "rotate-90")} />
           </button>
         )}
         <div className="space-y-1">
