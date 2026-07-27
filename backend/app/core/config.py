@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     S3_BUCKET: str | None = None
     S3_PREFIX: str = ""
 
+    # ---- Auth ----
+    # Change this in production — a stable secret is required so tokens
+    # survive a backend restart. Set JWT_SECRET in .env to override.
+    JWT_SECRET: str = "dev-insecure-secret-change-me"
+    JWT_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    SEED_ADMIN_USERNAME: str = "admin"
+    SEED_ADMIN_PASSWORD: str = "admin"
+
     class Config:
         env_file = str(Path(__file__).resolve().parents[3] / ".env")
         extra = "ignore"

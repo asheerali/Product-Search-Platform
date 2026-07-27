@@ -1,10 +1,12 @@
 "use client";
+import { useAuth } from "@/components/AuthProvider";
 import clsx from "clsx";
 import {
     ClipboardList,
     Database,
     Inbox,
     LayoutDashboard,
+    LogOut,
     Package,
     PanelLeftClose,
     PanelLeftOpen,
@@ -18,7 +20,7 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/ingest", label: "Ingest", icon: Upload },
+  { href: "/scrape", label: "Scrape Products", icon: Upload },
   { href: "/search", label: "Search", icon: Search },
   { href: "/products", label: "Products", icon: Package },
   { href: "/jobs", label: "Jobs", icon: ClipboardList },
@@ -35,6 +37,7 @@ const STORAGE_KEY = "sidebarCollapsed";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -148,6 +151,20 @@ export function Sidebar() {
             );
           })}
         </div>
+      </div>
+
+      <div className="px-2.5 pb-1">
+        <button
+          onClick={logout}
+          title={collapsed ? "Log out" : undefined}
+          className={clsx(
+            "group flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-150 w-full text-slate-400 hover:bg-white/5 hover:text-white",
+            collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5"
+          )}
+        >
+          <LogOut size={18} className="shrink-0" />
+          {!collapsed && "Log out"}
+        </button>
       </div>
 
       {!collapsed && (

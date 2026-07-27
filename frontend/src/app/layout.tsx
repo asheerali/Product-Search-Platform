@@ -1,6 +1,4 @@
-import { DemoModeProvider } from "@/components/DemoModeProvider";
-import { Header } from "@/components/Header";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
 import { THEME_INIT_SCRIPT, ThemeProvider } from "@/components/ThemeProvider";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -29,13 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <ThemeProvider>
-          <DemoModeProvider>
-            <Sidebar />
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <Header />
-              <main className="flex-1 overflow-y-auto p-6 lg:p-8">{children}</main>
-            </div>
-          </DemoModeProvider>
+          <AppShell>{children}</AppShell>
           <Toaster
             position="top-right"
             toastOptions={{

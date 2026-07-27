@@ -57,7 +57,7 @@ export default function UploadPage() {
         Bring every source into one place — PDFs, PPT decks, spreadsheets, emails, and WhatsApp
         screenshots — instead of leaving them scattered across inboxes and chats. Files dropped
         here are archived straight to S3 storage; nothing is parsed or extracted. To run the
-        extraction pipeline, use the <Link href="/ingest" className="text-sky-600 dark:text-sky-400 hover:underline">Ingest</Link> tab instead.
+        extraction pipeline, use the <Link href="/scrape" className="text-sky-600 dark:text-sky-400 hover:underline">Scrape Products</Link> tab instead.
       </p>
 
       {/* Drop zone */}

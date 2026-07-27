@@ -24,6 +24,19 @@ def _uuid() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Users — login-gated access. No admin UI yet; `role` just leaves room for one.
+# ---------------------------------------------------------------------------
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, default="user")  # "user" | "admin" — reserved for a future admin panel
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
 # Processed files registry — the primary deduplication gate
 # ---------------------------------------------------------------------------
 class ProcessedFile(Base):

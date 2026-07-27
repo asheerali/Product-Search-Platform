@@ -1,8 +1,28 @@
 import axios from "axios";
+import { clearToken, getToken } from "@/lib/auth";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const client = axios.create({ baseURL: `${API_BASE}/api/v1` });
+
+client.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+client.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      clearToken();
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(err);
+  }
+);
 
 // Product images are either a full S3 URL (already absolute — stored directly
 // in the DB) or a path relative to API_BASE (local /files/pics/... fallback).
@@ -13,6 +33,18 @@ export function resolveImageUrl(url: string): string {
     return url;
   }
   return `${API_BASE}${url}`;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  username: string;
+  role: string;
+}
+
+export async function login(username: string, password: string): Promise<LoginResponse> {
+  const res = await client.post<LoginResponse>("/auth/login", { username, password });
+  return res.data;
 }
 
 export interface IngestionJob {

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import router
 from app.core.config import settings
 from app.core.database import create_all_tables
+from app.core.security import seed_admin_user
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,6 +22,8 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Product Search Platform API...")
     create_all_tables()
     logger.info("Database tables ready.")
+    seed_admin_user()
+    logger.info("Admin user ready.")
     yield
     # Shutdown
     logger.info("Shutting down.")

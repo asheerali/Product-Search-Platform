@@ -9,6 +9,21 @@ from app.services.ai.llm.llm_client import chat_completion, vision_completion
 
 logger = logging.getLogger(__name__)
 
+
+def _parse_json_array(response: str) -> list:
+    """
+    Parse a JSON array from an LLM response. Models occasionally wrap output
+    in a ```json ... ``` markdown fence despite being told not to — strip
+    that before parsing so an otherwise-valid response isn't silently
+    discarded as a parse failure (which looks like "0 products found").
+    """
+    text = response.strip()
+    if text.startswith("```"):
+        text = text.strip("`").strip()
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+    return json.loads(text)
+
 TEXT_EXTRACTION_PROMPT = """You are a furniture product data extraction expert.
 Extract ALL distinct products mentioned in the following text/table data.
 
@@ -141,7 +156,7 @@ class ProductAnalyzer:
 
         try:
             response = chat_completion(messages=messages, temperature=0.1, max_tokens=4096)
-            products = json.loads(response.strip())
+            products = _parse_json_array(response)
             if not isinstance(products, list):
                 return []
             # Inject supplier name where missing
@@ -182,7 +197,7 @@ class ProductAnalyzer:
             response = vision_completion(
                 image_path=image_path, prompt=IMAGE_ANALYSIS_PROMPT, max_tokens=4096
             )
-            data = json.loads(response.strip())
+            data = _parse_json_array(response)
             if isinstance(data, dict):
                 data = [data]
             if not isinstance(data, list):

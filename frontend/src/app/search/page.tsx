@@ -5,7 +5,7 @@ import { imageSearch, resolveImageUrl, textSearch } from "@/lib/api";
 import { DEMO_SEARCH_RESPONSE } from "@/lib/demoData";
 import clsx from "clsx";
 import { ImageIcon, Loader2, Search, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 
@@ -13,25 +13,52 @@ type SearchMode = "text" | "image";
 
 export default function SearchPage() {
   const { isBackendUp } = useDemoMode();
-  const [mode, setMode] = useState<SearchMode>("text");
+  const [mode, setMode] = useState<SearchMode>("image");
   const [query, setQuery] = useState("");
   const [queryImage, setQueryImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<SearchResponse | null>(null);
 
-  const onDrop = useCallback((files: File[]) => {
-    if (files[0]) {
-      setQueryImage(files[0]);
-      setPreviewUrl(URL.createObjectURL(files[0]));
-    }
+  const setImageFile = useCallback((file: File) => {
+    setQueryImage(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setMode("image");
   }, []);
+
+  const onDrop = useCallback(
+    (files: File[]) => {
+      if (files[0]) setImageFile(files[0]);
+    },
+    [setImageFile]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { "image/*": [".jpg", ".jpeg", ".png", ".webp"] },
     multiple: false,
   });
+
+  // Let users paste an image (Ctrl+V) straight from the clipboard instead of
+  // only drag-drop/file-select — e.g. a screenshot or a copied product photo.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            setImageFile(file);
+            toast.success("Image pasted from clipboard.");
+          }
+          break;
+        }
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [setImageFile]);
 
   const handleSearch = async () => {
     if (mode === "text" && !query.trim()) return toast.error("Enter a search query.");
