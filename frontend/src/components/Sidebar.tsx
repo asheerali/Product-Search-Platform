@@ -2,6 +2,7 @@
 import { useAuth } from "@/components/AuthProvider";
 import clsx from "clsx";
 import {
+    ChevronRight,
     ClipboardList,
     Database,
     Inbox,
@@ -12,7 +13,6 @@ import {
     PanelLeftOpen,
     Search,
     Sparkles,
-    Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -20,8 +20,7 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/scrape", label: "Scrape Products", icon: Upload },
-  { href: "/search", label: "Search", icon: Search },
+  { href: "/scrape-search", label: "Scrape / Search", icon: Search },
   { href: "/products", label: "Products", icon: Package },
   { href: "/jobs", label: "Jobs", icon: ClipboardList },
 ];
@@ -40,11 +39,20 @@ export function Sidebar() {
   const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Both groups start closed — whichever one contains the page you're
+  // currently on auto-opens so navigation never hides your active tab.
+  const [scraperOpen, setScraperOpen] = useState(false);
+  const [storageOpen, setStorageOpen] = useState(false);
 
   useEffect(() => {
     setCollapsed(localStorage.getItem(STORAGE_KEY) === "1");
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (navItems.some((i) => i.href === pathname)) setScraperOpen(true);
+    if (storageNavItems.some((i) => i.href === pathname)) setStorageOpen(true);
+  }, [pathname]);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -100,13 +108,17 @@ export function Sidebar() {
         </button>
       )}
 
-      <nav className="flex-1 px-2.5 py-2 space-y-1">
+      <nav className="flex-1 px-2.5 py-2 space-y-1 overflow-y-auto">
         {!collapsed && (
-          <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+          <button
+            onClick={() => setScraperOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400 transition-colors"
+          >
             Scraper App
-          </p>
+            <ChevronRight size={12} className={clsx("transition-transform", scraperOpen && "rotate-90")} />
+          </button>
         )}
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {(collapsed || scraperOpen) && navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link
@@ -130,12 +142,16 @@ export function Sidebar() {
 
       <div className="px-2.5 pb-2">
         {!collapsed && (
-          <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+          <button
+            onClick={() => setStorageOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400 transition-colors"
+          >
             Storage App
-          </p>
+            <ChevronRight size={12} className={clsx("transition-transform", storageOpen && "rotate-90")} />
+          </button>
         )}
         <div className="space-y-1">
-          {storageNavItems.map(({ href, label, icon: Icon }) => {
+          {(collapsed || storageOpen) && storageNavItems.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
               <Link

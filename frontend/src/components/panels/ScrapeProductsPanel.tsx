@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 
 type Mode = "file" | "folder";
 
-export default function ScrapeProductsPage() {
+export function ScrapeProductsPanel() {
   const { isBackendUp } = useDemoMode();
   const [mode, setMode] = useState<Mode>("file");
   const [folderPath, setFolderPath] = useState("");

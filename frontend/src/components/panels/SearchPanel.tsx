@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 
 type SearchMode = "text" | "image";
 
-export default function SearchPage() {
+export function SearchPanel() {
   const { isBackendUp } = useDemoMode();
   const [mode, setMode] = useState<SearchMode>("image");
   const [query, setQuery] = useState("");
@@ -156,7 +156,7 @@ export default function SearchPage() {
             >
               <input {...getInputProps()} />
               <ImageIcon className="mx-auto text-slate-400 dark:text-slate-500 mb-3" size={36} />
-              <p className="text-slate-600 dark:text-slate-300 text-sm">Drop a furniture photo here or click to upload</p>
+              <p className="text-slate-600 dark:text-slate-300 text-sm">Drop a furniture photo here, click to upload, or paste (Ctrl+V)</p>
             </div>
           )}
           <button
